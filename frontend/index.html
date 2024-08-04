@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login and Submit</title>
+</head>
+<body>
+    <h1>Login</h1>
+    <form action="/login" method="post">
+        <input type="text" name="username" placeholder="Username" required>
+        <input type="password" name="password" placeholder="Password" required>
+        <button type="submit">Login</button>
+    </form>
+
+    <h1>Enter Movies, Ratings, and Operation</h1>
+    <form action="/submit" method="post">
+        <input type="text" name="movie name" placeholder="Movie" required>
+        <input type="text" name="rating" placeholder="Rating" required>
+        <select name="operation" required>
+            <option value="add">Add</option>
+            <option value="remove">Remove</option>
+        </select>
+        <button type="submit">Submit</button>
+    </form>
+
+    <h1>Get Recommendations</h1>
+    <form action="/recommend" method="post">
+        <button type="submit">Recommend</button>
+    </form>
+</body>
+</html>
