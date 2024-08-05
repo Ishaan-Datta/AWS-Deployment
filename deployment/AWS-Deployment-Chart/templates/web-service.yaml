@@ -2,14 +2,15 @@ apiVersion: v1
 kind: Service
 metadata:
   name: frontend
-  labels:
-    app: {{ .Values.frontend.appName }}
+  annotations:
+    prometheus.io/scrape: "true"
+    # prometheus.io/path: "/metrics"
+    # prometheus.io/port: "8080"
 spec:
   type: {{ .Values.frontend.service.type }}
   ports:
     - port: {{ .Values.frontend.service.port }}
       targetPort: {{ .Values.frontend.image.port }}
       nodePort: {{ .Values.frontend.service.nodePort }}
-  selector: # tell service to send traffic to any pod with label...
-    matchLabels:
-      app: {{ .Values.frontend.appName }}
+  selector:
+    app: {{ .Values.frontend.appName }}

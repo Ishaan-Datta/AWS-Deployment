@@ -2,8 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: recommendation
-  labels:
-    app: {{ .Values.rec.appName }}
 spec:
   replicas: {{ .Values.recommend.replicaCount }}
   selector:
@@ -26,14 +24,14 @@ spec:
             memory: {{ .Values.resources.limits.memory }}
             cpu: {{ .Values.resources.limits.cpu }}
         securityContext:
-          allowPrivilegeEscalation: false
-          runAsNonRoot: true
-          readOnlyRootFilesystem: false
+          allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
+          runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+          readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
         ports:
-            containerPort: {{ .Values.recommend.image.port }}
+          - containerPort: {{ .Values.recommend.image.port }}
         env:
           - name: PORT
-            value: {{ .Values.recommend.image.port }}
+            value: "{{ .Values.recommend.image.port }}"
           # - name: LOG_LEVEL
           #   valueFrom:
           #     configMapKeyRef:

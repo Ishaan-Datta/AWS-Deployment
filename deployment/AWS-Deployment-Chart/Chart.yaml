@@ -1,8 +1,9 @@
 apiVersion: v2
-name: aws-deployment-chart
+name: AWS-Deployment-Chart
 description: A Helm chart for deploying a small web application on EKS
 appVersion: "1.0"
 version: 0.1.0
+type: application
 
 dependencies:
   - name: ingress-nginx

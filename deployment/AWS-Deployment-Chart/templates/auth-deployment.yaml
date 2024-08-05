@@ -2,8 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: authentication
-  labels:
-    app: {{ .Values.auth.appName }}
 spec:
   replicas: {{ .Values.auth.replicaCount }}
   selector:
@@ -26,14 +24,14 @@ spec:
             memory: {{ .Values.resources.limits.memory }}
             cpu: {{ .Values.resources.limits.cpu }}
         securityContext:
-          allowPrivilegeEscalation: false
-          runAsNonRoot: true
-          readOnlyRootFilesystem: false
+          allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
+          runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+          readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
         ports:
-            containerPort: {{ .Values.auth.image.port }}
+          - containerPort: {{ .Values.auth.image.port }}
         env:
           - name: PORT
-            value: {{ .Values.auth.image.port }}
+            value: "{{ .Values.auth.image.port }}"
           # - name: LOG_LEVEL
           #   valueFrom:
           #     configMapKeyRef:

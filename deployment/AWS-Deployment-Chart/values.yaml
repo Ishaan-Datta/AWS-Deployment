@@ -8,11 +8,11 @@ frontend:
     repository: ishaandatta/aws-deployment
     tag: web
     pullPolicy: IfNotPresent
-    port: 80
+    port: "80"
   service:
     type: NodePort #clusterIP
     port: 80 #8080
-    nodePort: 8080
+    nodePort: 30000
 
 auth:
   replicaCount: 1
@@ -55,23 +55,51 @@ prometheus:
     service:
       type: NodePort
 
-ingress-nginx:
-  controller:
-    service:
-      type: NodePort
+# server:
+#   ## Prometheus server container name
+#   name: server
+
+#   service:
+#     nodePort: 30001
+#     type: NodePort
+
+testing:
+  enabled: true
+
+production:
+  enabled: false
 
 ingress:
   enabled: true
-  annotations: 
-    nginx.ingress.kubernetes.io/rewrite-target: /
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
-  hosts:
+  name: dev-test-service
+  namespace: development
+  path: /
+  pathType: Prefix
+  rules:
     - host: 127.0.0.1
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
-  # tls: []
+      http:
+        paths:
+          - path: /wishlist
+            pathType: Prefix
+            backend:
+              service:
+                name: wishlist-service
+                port:
+                  number: 8080
+          - path: /products
+            pathType: Prefix
+            backend:
+              service:
+                name: wishlist-service
+                port:
+                  number: 8081
+          - path: /login
+            pathType: Prefix
+            backend:
+              service:
+                name: wishlist-service
+                port:
+                  number: 8082
 
 resources: 
   limits:
@@ -80,6 +108,14 @@ resources:
   requests:
     cpu: 100m
     memory: 128Mi
+
+securityContext:
+  allowPrivilegeEscalation: false
+  runAsNonRoot: false # change later
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
 
 # autoscaling:
 #   enabled: false

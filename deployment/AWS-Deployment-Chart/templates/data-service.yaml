@@ -1,14 +1,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: user-database
-  labels:
-    app: {{ .Values.userdata.appName }}
+  name: user-database-internal
+  annotations:
+    prometheus.io/scrape: "true"
+    # prometheus.io/path: "/metrics"
+    # prometheus.io/port: "8080"
 spec:
   type: {{ .Values.userdata.service.type }}
   ports:
     - port: {{ .Values.userdata.service.port }}
       targetPort: {{ .Values.userdata.image.port }}
   selector:
-    matchLabels:
-      app: {{ .Values.userdata.appName }}
+    app: {{ .Values.userdata.appName }}

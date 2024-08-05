@@ -85,8 +85,9 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	authToken = token["token"]
 	user = username
-	http.Redirect(w, r, "/", http.StatusSeeOther)
-	return
+	fmt.Fprintf(w, "Response from API: %s", token)
+	// http.Redirect(w, r, "/", http.StatusSeeOther)
+	// return
 }
 
 // add spot on index.html to display result beyond logging

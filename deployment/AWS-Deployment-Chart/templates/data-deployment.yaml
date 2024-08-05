@@ -2,8 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: user-database
-  labels:
-    app: {{ .Values.userdata.appName }}
 spec:
   replicas: {{ .Values.userdata.replicaCount }}
   selector:
@@ -26,14 +24,14 @@ spec:
             memory: {{ .Values.resources.limits.memory }}
             cpu: {{ .Values.resources.limits.cpu }}
         securityContext:
-          allowPrivilegeEscalation: false
-          runAsNonRoot: true
-          readOnlyRootFilesystem: false
+          allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
+          runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+          readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
         ports:
           - containerPort: {{ .Values.userdata.image.port }}
         env:
           - name: PORT 
-            value: {{ .Values.userdata.image.port }}
+            value: "{{ .Values.userdata.image.port }}"
           - name: AUTH_URL
             value: "http://authentication:{{ .Values.auth.service.port }}"
           # - name: LOG_LEVEL
