@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: {{ .Values.frontend.appName }}
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.frontend.appName }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.frontend.appName }}
+    spec:
+      containers:
+      - name: {{ .Values.frontend.appName }}-{{ randAlpha 5 | lower }}
+        image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+        imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+        resources: 
+          requests:
+            memory: {{ .Values.resources.requests.memory }}
+            cpu: {{ .Values.resources.requests.cpu }}
+          limits:
+            memory: {{ .Values.resources.limits.memory }}
+            cpu: {{ .Values.resources.limits.cpu }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+        ports:
+          - containerPort: {{ .Values.frontend.image.port }}
+        env:
+          - name: PORT 
+            value: {{ .Values.frontend.image.port }}
+          # - name: LOG_LEVEL
+          #   valueFrom:
+          #     configMapKeyRef:
+          #       name: log-config
+          #       key: log-level
+          - name: RECOMMEND_URL
+            value: "http://recommend:{{ .Values.recommend.service.port }}"
+          - name: AUTH_URL
+            value: "http://authentication:{{ .Values.auth.service.port }}"
+          - name: SUBMIT_URL
+            value: "http://user-database:{{ .Values.userdata.service.port }}"
+        livenessProbe:
+          httpGet:
+            path: /status
+            port: {{ .Values.frontend.image.port }}
+          initialDelaySeconds: 5
+          timeoutSeconds: 1

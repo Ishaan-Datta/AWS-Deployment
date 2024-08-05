@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-database
+  labels:
+    app: {{ .Values.userdata.appName }}
+spec:
+  type: {{ .Values.userdata.service.type }}
+  ports:
+    - port: {{ .Values.userdata.service.port }}
+      targetPort: {{ .Values.userdata.image.port }}
+  selector:
+    matchLabels:
+      app: {{ .Values.userdata.appName }}

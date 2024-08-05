@@ -1,0 +1,90 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend-ingress
+  annotations:
+    {{- range $key, $value := .Values.ingress.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+spec:
+  rules:
+  - host: 127.0.0.1
+    http:
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+          backend:
+            service:
+              name: frontend
+              port:
+                number: 80
+  # rules:
+  #   {{- range .Values.ingress.hosts }}
+  #   - host: {{ .host | quote }}
+  #     http:
+  #       paths:
+  #         {{- range .paths }}
+  #         - path: {{ .path }}
+  #           pathType: {{ .pathType }}
+  #           backend:
+  #             service:
+  #               name: frontend
+  #               port:
+  #                 number: 80
+  #         {{- end }}
+  #   {{- end }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    {{- range .Values.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+# ---
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   creationTimestamp: null
+#   name: {{ .Values.appName }}
+#   annotations:
+#     kubernetes.io/ingress.class: alb
+#     alb.ingress.kubernetes.io/target-type: ip
+#     alb.ingress.kubernetes.io/scheme: internet-facing
+# spec:
+#   rules:
+#   - http:
+#       paths:
+#       - backend:
+#           service:
+#             name: explorecalifornia-svc
+#             port:
+#               number: {{ .Values.servicePort }}
+#         path: /
+#         pathType: Prefix
+# ---
+# apiVersion: extensions/v1beta1
+# kind: Ingress
+# metadata:
+#   name: wishlist-service
+#   labels:
+#     app: wishlist-service
+# spec:
+#   rules:
+#   - host:
+#     http:
+#       paths:
+#       - path: /wishlist
+#         backend:
+#           serviceName: wishlist-service
+#           servicePort: 8080
+#       - path: /products
+#         backend:
+#           serviceName: wishlist-service
+#           servicePort: 8081
+#       - path: /login
+#         backend:
+#           serviceName: wishlist-service
+#           servicePort: 8082
