@@ -457,3 +457,103 @@ resource "helm_release" "kubeflow_pipeline" {
 #     scan_on_push = true
 #   }
 # }
+
+# LATEST:
+# Purpose: Hosts your Kubernetes control plane.
+resource "aws_eks_cluster" "example" {
+  name     = "example-cluster"
+  role_arn  = aws_iam_role.eks_cluster.arn
+  version  = "1.21"
+
+  vpc_config {
+    subnet_ids = aws_subnet.public.*.id
+  }
+}
+
+# Purpose: Provides permissions for EKS and worker nodes.
+
+resource "aws_iam_role" "eks_cluster" {
+  name = "eks-cluster-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "eks.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "eks_cluster" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+  role     = aws_iam_role.eks_cluster.name
+}
+
+# Purpose: Provides worker nodes for running your Kubernetes pods.
+resource "aws_eks_node_group" "example" {
+  cluster_name    = aws_eks_cluster.example.name
+  node_group_name = "example-node-group"
+  node_role_arn   = aws_iam_role.eks_node.arn
+  subnet_ids      = aws_subnet.public.*.id
+  scaling_config {
+    desired_size = 2
+    max_size     = 3
+    min_size     = 1
+  }
+}
+
+# Purpose: Provides network isolation and connectivity for your EKS cluster and services.
+resource "aws_vpc" "example" {
+  cidr_block = "10.0.0.0/16"
+  enable_dns_support = true
+  enable_dns_hostnames = true
+}
+
+resource "aws_subnet" "public" {
+  count = 2
+  vpc_id     = aws_vpc.example.id
+  cidr_block  = "10.0.${count.index}.0/24"
+  availability_zone = element(data.aws_availability_zones.available.names, count.index)
+  map_public_ip_on_launch = true
+}
+
+resource "aws_security_group" "eks" {
+  vpc_id = aws_vpc.example.id
+}
+
+# Purpose: Manages your database for storing user data.
+resource "aws_db_instance" "example" {
+  identifier        = "example-db"
+  engine            = "mysql"
+  instance_class    = "db.t3.micro"
+  allocated_storage = 20
+  username          = "admin"
+  password          = "password"
+  db_name           = "exampledb"
+  publicly_accessible = true
+  vpc_security_group_ids = [aws_security_group.db.id]
+}
+
+# elastic load balancer:
+resource "aws_lb" "example" {
+  name               = "example-lb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.eks.id]
+  subnets            = aws_subnet.public[*].id
+}
+
+# Purpose: Manages sensitive information such as database credentials.
+resource "aws_secretsmanager_secret" "example" {
+  name = "example-secret"
+}
+
+# main.tf: Defines resources and configurations.
+# variables.tf: Contains variable definitions.
+# outputs.tf: Specifies outputs from Terraform.
+# provider.tf: Configures the AWS provider.
