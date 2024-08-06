@@ -1,0 +1,21 @@
+{{- if .Values.production.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  creationTimestamp: null
+  name: {{ .Values.appName }}
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/scheme: internet-facing
+spec:
+  rules:
+  - http:
+      paths:
+      - backend:
+          service:
+            name: explorecalifornia-svc
+            port:
+              number: {{ .Values.servicePort }}
+        path: /
+        pathType: Prefix
