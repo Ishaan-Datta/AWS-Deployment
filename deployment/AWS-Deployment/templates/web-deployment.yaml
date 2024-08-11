@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: frontend
+  name: {{ .Values.frontend.appName }}
 spec:
   replicas: {{ .Values.frontend.replicaCount }}
   selector:
@@ -28,27 +28,32 @@ spec:
           runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
           capabilities:
             drop:
-              - ALL # figure out how to parametrize
+              - ALL
           readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
         ports:
           - containerPort: {{ .Values.frontend.image.port }}
         env:
           - name: PORT 
             value: "{{ .Values.frontend.image.port }}"
-          # - name: LOG_LEVEL
-          #   valueFrom:
-          #     configMapKeyRef:
-          #       name: log-config
-          #       key: log-level
+          - name: LOG_LEVEL
+            value: "{{ .Values.frontend.logLevel }}"
           - name: RECOMMEND_URL
-            value: "http://recommend:{{ .Values.recommend.service.port }}"
+            value: "http://{{ .Values.recommendation.appName }}:{{ .Values.recommendation.service.port }}"
           - name: AUTH_URL
-            value: "http://authentication:{{ .Values.auth.service.port }}"
+            value: "http://{{ .Values.authentication.appName }}:{{ .Values.authentication.service.port }}"
           - name: SUBMIT_URL
-            value: "http://user-database:{{ .Values.userdata.service.port }}"
+            value: "http://{{ .Values.userdatabase.appName }}:{{ .Values.userdatabase.service.port }}"
         livenessProbe:
           httpGet:
             path: /status
             port: {{ .Values.frontend.image.port }}
           initialDelaySeconds: 5
           timeoutSeconds: 1
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: {{ .Values.authentication.image.port }}
+          initialDelaySeconds: 10
+          timeoutSeconds: 1
+          periodSeconds: 5
+          failureThreshold: 3

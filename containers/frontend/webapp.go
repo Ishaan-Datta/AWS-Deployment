@@ -34,7 +34,12 @@ var (
 
 func init() {
 	prometheus.MustRegister(helloCounter)
-	log.SetLevel(log.DebugLevel)
+	logLevel := os.Getenv("LOG_LEVEL")
+	if logLevel == "info" {
+		log.SetLevel(log.InfoLevel)
+	} else {
+		log.SetLevel(log.DebugLevel)
+	}
 
 	port = os.Getenv("PORT")
 	rec_url = os.Getenv("RECOMMEND_URL")
@@ -54,6 +59,7 @@ func homePage(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, nil)
 }
 
+// write response properly for data here...
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	log.Debugf("Login handler was called")
 	helloCounter.With(prometheus.Labels{"url": "/login"}).Inc()
@@ -138,6 +144,7 @@ func submissionHandler(w http.ResponseWriter, r *http.Request) {
 	// return
 }
 
+// might be broken... -> way i read...
 func recommendationHandler(w http.ResponseWriter, r *http.Request) {
 	log.Debugf("Recommendation handler was called")
 	helloCounter.With(prometheus.Labels{"url": "/recommend"}).Inc()
@@ -188,6 +195,14 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "{'status':'ok'}")
 }
 
+func readyHandler(w http.ResponseWriter, r *http.Request) {
+	log.Debugf("Ready handler was called")
+	helloCounter.With(prometheus.Labels{"url": "/ready"}).Inc()
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "{'ready':'true'}")
+}
+
 func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/", homePage)
@@ -196,6 +211,7 @@ func main() {
 	r.HandleFunc("/recommend", recommendationHandler)
 	r.HandleFunc("/version", versionHandler)
 	r.HandleFunc("/status", statusHandler)
+	r.HandleFunc("/ready", readyHandler)
 	http.Handle("/", r)
 	http.Handle("/metrics", promhttp.Handler())
 	log.Infof("Starting up server")

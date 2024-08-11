@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.authentication.appName }}
+spec:
+  type: {{ .Values.authentication.service.type }}
+  ports:
+    - port: {{ .Values.authentication.service.port }}
+      targetPort: {{ .Values.authentication.image.port }}
+  selector:
+    app: {{ .Values.authentication.appName }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.userdatabase.appName }}
+spec:
+  type: {{ .Values.userdatabase.service.type }}
+  ports:
+    - port: {{ .Values.userdatabase.service.port }}
+      targetPort: {{ .Values.userdatabase.image.port }}
+  selector:
+    app: {{ .Values.userdatabase.appName }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.recommendation.appName }}
+spec:
+  type: {{ .Values.recommendation.service.type }}
+  ports:
+    - port: {{ .Values.recommendation.service.port }}
+      targetPort: {{ .Values.recommendation.image.port }}
+  selector:
+    app: {{ .Values.recommendation.appName }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+spec:
+  type: {{ .Values.frontend.service.type }}
+  ports:
+    - port: {{ .Values.frontend.service.port }}
+      targetPort: {{ .Values.frontend.image.port }}
+      nodePort: {{ .Values.frontend.service.nodePort }}
+  selector:
+    app: {{ .Values.frontend.appName }}
+---
+{{- if .Values.testing.ingress }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Values.ingress.name }}
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
+  labels:
+    app: {{ .Values.ingress.name }}
+spec:
+  ingressClassName: nginx
+  rules:
+    {{- range .Values.ingress.rules }}
+    - host: {{ .host }}
+      http:
+        paths:
+          {{- range .http.paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ .backend.service.name }}
+                port:
+                  number: {{ .backend.service.port.number }}
+          {{- end }}
+    {{- end }}
+{{- end }}

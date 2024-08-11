@@ -1,0 +1,113 @@
+deployment:
+  local: true
+  ingress: true
+
+frontend:
+  logLevel: debug
+  replicaCount: 1
+  appName: web
+  image:
+    repository: ishaandatta/aws-deployment
+    tag: web
+    pullPolicy: IfNotPresent
+    port: 8080
+  service:
+    type: ClusterIP
+    port: 8080
+
+authentication:
+  logLevel: debug
+  replicaCount: 1
+  appName: auth
+  image:
+    repository: ishaandatta/aws-deployment
+    tag: auth
+    pullPolicy: IfNotPresent
+    port: 8081
+  service:
+    type: ClusterIP
+    port: 8081
+
+recommendation:
+  logLevel: debug
+  replicaCount: 1
+  appName: rec
+  image:
+    repository: ishaandatta/aws-deployment
+    tag: rec
+    pullPolicy: IfNotPresent
+    port: 8082
+  service:
+    type: ClusterIP
+    port: 8082
+
+userdatabase:
+  logLevel: debug
+  replicaCount: 1
+  appName: data
+  image:
+    repository: ishaandatta/aws-deployment
+    tag: data
+    pullPolicy: IfNotPresent
+    port: 8083
+  service:
+    type: ClusterIP
+    port: 8083
+  env:
+    DB_USERNAME: ""
+    DB_PASSWORD: ""
+    DB_URL: ""
+
+ingress:
+  name: ingress
+  rules:
+    - host: mylocaltestsite.local
+      http:
+        paths:
+        - path: /auth(/|$)(.*)
+          pathType: ImplementationSpecific
+          backend:
+            service:
+              name: authentication
+              port:
+                number: 8081
+        - path: /webapp(/|$)(.*)
+          pathType: ImplementationSpecific
+          backend:
+            service:
+              name: frontend
+              port:
+                number: 8080
+        - path: /recommend(/|$)(.*)
+          pathType: ImplementationSpecific
+          backend:
+            service:
+              name: recommend
+              port:
+                number: 8082
+        - path: /user-data(/|$)(.*)
+          pathType: ImplementationSpecific
+          backend:
+            service:
+              name: userdata
+              port:
+                number: 8083
+
+resources: 
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+rbac: 
+  create: false
+
+securityContext:
+  allowPrivilegeEscalation: false
+  runAsNonRoot: false # change later
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false

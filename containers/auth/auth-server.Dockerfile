@@ -11,6 +11,7 @@ FROM scratch
 COPY --from=builder /app/auth-server /
 
 ENV PORT=8081
+ENV LOG_LEVEL=debug
 
 EXPOSE 8081
 ENTRYPOINT [ "/auth-server" ]

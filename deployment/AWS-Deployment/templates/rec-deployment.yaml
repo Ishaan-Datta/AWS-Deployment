@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.recommendation.appName }}
+spec:
+  replicas: {{ .Values.recommendation.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.recommendation.appName }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.recommendation.appName }}
+    spec:
+      containers:
+      - name: {{ .Values.recommendation.appName }}-{{ randAlpha 5 | lower }}
+        image: "{{ .Values.recommendation.image.repository }}:{{ .Values.recommendation.image.tag }}"
+        imagePullPolicy: {{ .Values.recommendation.image.pullPolicy }}
+        resources: 
+          requests:
+            memory: {{ .Values.resources.requests.memory }}
+            cpu: {{ .Values.resources.requests.cpu }}
+          limits:
+            memory: {{ .Values.resources.limits.memory }}
+            cpu: {{ .Values.resources.limits.cpu }}
+        securityContext:
+          allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
+          runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+          readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
+        ports:
+          - containerPort: {{ .Values.recommendation.image.port }}
+        env:
+          - name: PORT
+            value: "{{ .Values.recommendation.image.port }}"
+          - name: LOG_LEVEL
+            value: "{{ .Values.recommendation.logLevel }}"
+        livenessProbe:
+          httpGet:
+            path: /status
+            port: {{ .Values.recommendation.image.port }}
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: {{ .Values.authentication.image.port }}
+          initialDelaySeconds: 10
+          timeoutSeconds: 1
+          periodSeconds: 5
+          failureThreshold: 3

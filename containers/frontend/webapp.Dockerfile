@@ -12,6 +12,7 @@ COPY --from=builder /app/webapp /
 COPY --from=builder /app/index.html /
 
 ENV PORT=8080
+ENV LOG_LEVEL=debug
 ENV AUTH_URL=http://host.docker.internal:8081
 ENV RECOMMEND_URL=http://host.docker.internal:8082
 ENV SUBMIT_URL=http://host.docker.internal:8083

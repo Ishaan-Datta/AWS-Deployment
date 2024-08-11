@@ -22,6 +22,7 @@ COPY --from=builder /app/user-data /
 COPY --from=builder /app/example.db /
 
 ENV PORT=8083
+ENV LOG_LEVEL=debug
 ENV AUTH_URL=http://host.docker.internal:8081
 
 EXPOSE 8083

@@ -10,7 +10,7 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -43,24 +43,60 @@ var auth_url string
 func init() {
 	prometheus.MustRegister(helloCounter)
 
+	logLevel := os.Getenv("LOG_LEVEL")
+	if logLevel == "info" {
+		log.SetLevel(log.InfoLevel)
+	} else {
+		log.SetLevel(log.DebugLevel)
+	}
+
 	log.SetLevel(log.DebugLevel)
 	port = os.Getenv("PORT")
 	auth_url = os.Getenv("AUTH_URL")
+	db_user := os.Getenv("DB_USERNAME")
+	db_password := os.Getenv("DB_PASSWORD")
+	db_url := os.Getenv("DB_URL")
+	db_name := os.Getenv("DB_NAME")
+
 	log.Infof("Port: %v", port)
+	log.Infof("DB Username: %v", db_user)
+	log.Infof("DB Password: %v", db_password)
+	log.Infof("DB URL: %v", db_url)
+	log.Infof("Auth URL: %v", db_name)
+
 	if len(port) == 0 {
-		log.Fatalf("Port wasn't passed. An env variable for port must be passed")
+		log.Fatalf("Port wasn't passed. An env variable must be passed")
+	}
+	if len(db_user) == 0 {
+		log.Fatalf("Database user wasn't passed. An env variable must be passed")
+	}
+	if len(db_password) == 0 {
+		log.Fatalf("Database password wasn't passed. An env variable must be passed")
+	}
+	if len(db_url) == 0 {
+		log.Fatalf("Databse URL wasn't passed. An env variable must be passed")
+	}
+	if len(db_name) == 0 {
+		log.Fatalf("Database name wasn't passed. An env variable must be passed")
 	}
 
 	var err error
-	// Open the database connection
-	db, err = sql.Open("sqlite3", "./example.db")
+
+	dsn := fmt.Sprintf("user=%s password=%s host=%s port=5432 dbname=%s sslmode=disable")
+
+	db, err = sql.Open("postgres", dsn)
 
 	if err != nil {
 		log.Fatalf("Failed to connect to the database: %s", err.Error())
 	}
+
+	err = db.Ping()
+	if err != nil {
+		log.Fatalf("Failed to ping database: %v", err)
+	}
+
 	log.Debugf("Connected to the database")
 
-	// later movie ID
 	query := `
     CREATE TABLE IF NOT EXISTS data (
 		username VARCHAR(255),
@@ -77,23 +113,6 @@ func init() {
 	}
 }
 
-// Initialize the database connection
-// func initDB() {
-//     var err error
-//     dsn := "username:password@tcp(127.0.0.1:3306)/dbname"
-//     db, err = sql.Open("mysql", dsn)
-//     if err != nil {
-//         log.Fatalf("Failed to connect to database: %v", err)
-//     }
-
-//     // Test the connection
-//     err = db.Ping()
-//     if err != nil {
-//         log.Fatalf("Failed to ping database: %v", err)
-//     }
-//     log.Println("Database connection established")
-// }
-
 func newHandler(w http.ResponseWriter, r *http.Request) {
 	log.Infof("newhandler was called")
 	w.Header().Set("Content-Type", "application/json")
@@ -105,7 +124,6 @@ func submissionHandler(w http.ResponseWriter, r *http.Request) {
 	log.Infof("submissionHandler was called")
 	helloCounter.With(prometheus.Labels{"url": "/submit"}).Inc()
 
-	// Extract the auth token from the request header
 	authToken := r.Header.Get("Authorization")
 	if len(authToken) == 0 {
 		log.Debugf("Auth token is missing")
@@ -140,7 +158,7 @@ func submissionHandler(w http.ResponseWriter, r *http.Request) {
 	operation := requestData["Operation"]
 
 	var db_error error
-	var tags []Tag // modify so both other funcs call readrecords and set tag
+	var tags []Tag
 	switch operation {
 	case "add":
 		tags, db_error = insertRecord(user, movie, rating)
@@ -161,17 +179,6 @@ func submissionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sendAPIResponse(w, tags)
-}
-
-func versionHandler(w http.ResponseWriter, r *http.Request) {
-	log.Debugf("Version handler was called")
-	helloCounter.With(prometheus.Labels{"url": "/version"}).Inc()
-	fmt.Fprintf(w, "{'version':'1.0'}")
-}
-func statusHandler(w http.ResponseWriter, r *http.Request) {
-	log.Debugf("Status handler was called")
-	helloCounter.With(prometheus.Labels{"url": "/status"}).Inc()
-	fmt.Fprintf(w, "{'status':'ok'}")
 }
 
 func verifyAuthToken(token string) bool {
@@ -222,7 +229,7 @@ func sendAPIResponse(w http.ResponseWriter, tags []Tag) {
 func insertRecord(username string, movie string, rating int) ([]Tag, error) {
 	query := `
 		INSERT INTO data (username, movieTitle, rating)
-		VALUES (?, ?, ?)
+		VALUES ($1, $2, $3)
 		ON CONFLICT(username, movieTitle)
 		DO UPDATE SET rating = excluded.rating;
 	`
@@ -237,7 +244,7 @@ func insertRecord(username string, movie string, rating int) ([]Tag, error) {
 }
 
 func readRecordByUsername(username string) ([]Tag, error) {
-	query := `SELECT movieTitle, rating FROM data WHERE username = ?`
+	query := `SELECT movieTitle, rating FROM data WHERE username = $1`
 	rows, err := db.Query(query, username)
 
 	if err != nil {
@@ -264,7 +271,7 @@ func readRecordByUsername(username string) ([]Tag, error) {
 }
 
 func deleteRecord(username string, movie string) ([]Tag, error) {
-	query := `DELETE FROM data WHERE username = ? AND movieTitle = ?`
+	query := `DELETE FROM data WHERE username = $1 AND movieTitle = $2`
 	_, err := db.Exec(query, username, movie)
 	if err != nil {
 		return nil, err
@@ -274,12 +281,33 @@ func deleteRecord(username string, movie string) ([]Tag, error) {
 	return tags, err
 }
 
+func versionHandler(w http.ResponseWriter, r *http.Request) {
+	log.Debugf("Version handler was called")
+	helloCounter.With(prometheus.Labels{"url": "/version"}).Inc()
+	fmt.Fprintf(w, "{'version':'1.0'}")
+}
+
+func statusHandler(w http.ResponseWriter, r *http.Request) {
+	log.Debugf("Status handler was called")
+	helloCounter.With(prometheus.Labels{"url": "/status"}).Inc()
+	fmt.Fprintf(w, "{'status':'ok'}")
+}
+
+func readyHandler(w http.ResponseWriter, r *http.Request) {
+	log.Debugf("Ready handler was called")
+	helloCounter.With(prometheus.Labels{"url": "/ready"}).Inc()
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "{'ready':'true'}")
+}
+
 func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/", newHandler)
 	r.HandleFunc("/submit", submissionHandler)
 	r.HandleFunc("/version", versionHandler)
 	r.HandleFunc("/status", statusHandler)
+	r.HandleFunc("/ready", readyHandler)
 	http.Handle("/", r)
 	http.Handle("/metrics", promhttp.Handler())
 	log.Infof("Starting up server")

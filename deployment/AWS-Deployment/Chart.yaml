@@ -1,6 +1,6 @@
 apiVersion: v2
-name: AWS-Deployment-Chart
-description: A Helm chart for deploying a small web application on EKS
+name: AWS-Deployment
+description: A Helm chart for deploying a microservice architecture web application on AWS EKS
 appVersion: "1.0"
 version: 0.1.0
 type: application

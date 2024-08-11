@@ -11,6 +11,7 @@ FROM scratch
 COPY --from=builder /app/recommend-server /
 
 ENV PORT=8082
+ENV LOG_LEVEL=debug
 
 EXPOSE 8082
 ENTRYPOINT [ "/recommend-server" ]
