@@ -57,7 +57,6 @@ func init() {
 	}
 
 	var err error
-	// Open the database connection
 	db, err = sql.Open("sqlite3", "./example.db")
 
 	if err != nil {
@@ -65,7 +64,6 @@ func init() {
 	}
 	log.Debugf("Connected to the database")
 
-	// later movie ID
 	query := `
     CREATE TABLE IF NOT EXISTS data (
 		username VARCHAR(255),
@@ -82,23 +80,6 @@ func init() {
 	}
 }
 
-// Initialize the database connection
-// func initDB() {
-//     var err error
-//     dsn := "username:password@tcp(127.0.0.1:3306)/dbname"
-//     db, err = sql.Open("mysql", dsn)
-//     if err != nil {
-//         log.Fatalf("Failed to connect to database: %v", err)
-//     }
-
-//     // Test the connection
-//     err = db.Ping()
-//     if err != nil {
-//         log.Fatalf("Failed to ping database: %v", err)
-//     }
-//     log.Println("Database connection established")
-// }
-
 func newHandler(w http.ResponseWriter, r *http.Request) {
 	log.Infof("newhandler was called")
 	w.Header().Set("Content-Type", "application/json")
@@ -110,21 +91,19 @@ func submissionHandler(w http.ResponseWriter, r *http.Request) {
 	log.Infof("submissionHandler was called")
 	helloCounter.With(prometheus.Labels{"url": "/submit"}).Inc()
 
-	// Extract the auth token from the request header
 	authToken := r.Header.Get("Authorization")
 	if len(authToken) == 0 {
 		log.Debugf("Auth token is missing")
 		http.Error(w, "Auth token is missing", http.StatusUnauthorized)
 		return
 	}
-	// Verify the auth token
+
 	if !verifyAuthToken(authToken) {
 		log.Debugf("Invalid auth token")
 		http.Error(w, "Invalid auth token", http.StatusUnauthorized)
 		return
 	}
 
-	// Parse the request body
 	var requestData map[string]string
 	err := json.NewDecoder(r.Body).Decode(&requestData)
 	if err != nil {
@@ -145,7 +124,7 @@ func submissionHandler(w http.ResponseWriter, r *http.Request) {
 	operation := requestData["Operation"]
 
 	var db_error error
-	var tags []Tag // modify so both other funcs call readrecords and set tag
+	var tags []Tag
 	switch operation {
 	case "add":
 		tags, db_error = insertRecord(user, movie, rating)
@@ -169,7 +148,6 @@ func submissionHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func verifyAuthToken(token string) bool {
-	// Create the request payload
 	payload := map[string]string{"token": token}
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
@@ -177,7 +155,6 @@ func verifyAuthToken(token string) bool {
 		return false
 	}
 
-	// Create a new HTTP request
 	req, err := http.NewRequest("POST", auth_url+"/token", bytes.NewBuffer(payloadBytes))
 	if err != nil {
 		log.Debugf("Failed to create request: %s", err.Error())
@@ -185,7 +162,6 @@ func verifyAuthToken(token string) bool {
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	// Send the request
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {

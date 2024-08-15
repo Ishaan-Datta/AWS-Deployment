@@ -18,10 +18,8 @@ RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 CC="zig cc -target x86_64-linux-musl" 
 RUN chmod +x user-data
 
 FROM scratch
-USER nonrootuser
 
 COPY --from=builder /app/user-data /
-COPY --from=builder /app/example.db /
 
 ENV PORT=8083
 ENV LOG_LEVEL=debug

@@ -83,11 +83,9 @@ func newHandler(w http.ResponseWriter, r *http.Request) {
 	helloCounter.With(prometheus.Labels{"url": "/auth"}).Inc()
 }
 
-// writing response proplery?
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	helloCounter.With(prometheus.Labels{"url": "/login"}).Inc()
 	log.Debugf("Login handler was called")
-	// Parse the JSON request body
 	var credentials struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
@@ -117,7 +115,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 func tokenHandler(w http.ResponseWriter, r *http.Request) {
 	helloCounter.With(prometheus.Labels{"url": "/token"}).Inc()
 	log.Debugf("token handler was called")
-	// Parse the JSON request body
 	var requestBody struct {
 		Token string `json:"token"`
 	}

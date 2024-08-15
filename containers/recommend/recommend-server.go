@@ -17,7 +17,6 @@ type MovieResponse struct {
 	Movies []string `json:"movies"`
 }
 
-// add prometheus endpoints + handler for /recommend
 var movies = []string{
 	"The Shawshank Redemption",
 	"The Godfather",

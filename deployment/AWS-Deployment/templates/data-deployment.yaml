@@ -14,7 +14,11 @@ spec:
     spec:
       containers:
       - name: {{ .Values.userdatabase.appName }}-{{ randAlpha 5 | lower }}
-        image: "{{ .Values.userdatabase.image.repository }}:{{ .Values.userdatabase.image.tag }}"
+        {{- if (.Values.deployment.localTesting) }}
+        image: "{{ .Values.userdatabase.image.repository }}:{{ .Values.userdatabase.image.local_tag }}"
+        {{- else }}
+        image: "{{ .Values.userdatabase.image.repository }}:{{ .Values.userdatabase.image.cloud_tag }}"
+        {{ end }}
         imagePullPolicy: {{ .Values.userdatabase.image.pullPolicy }}
         resources: 
           requests:
@@ -33,11 +37,11 @@ spec:
           - name: PORT 
             value: "{{ .Values.userdatabase.image.port }}"
           - name: AUTH_URL
-            value: "http://{{ .Values.authentication.appName }}-service:{{ .Values.authentication.service.port }}"
+            value: "http://{{ .Values.authentication.appName }}:{{ .Values.authentication.service.port }}"
           - name: LOG_LEVEL
             value: "{{ .Values.userdatabase.logLevel }}"
           # Conditionally include AWS-related environment variables
-          {{- if .Values.aws.enabled }}
+          {{- if ( not .Values.deployment.localTesting) }}
           - name: DB_USERNAME
             value: "{{ .Values.userdatabase.env.DB_USERNAME }}"
           - name: DB_PASSWORD

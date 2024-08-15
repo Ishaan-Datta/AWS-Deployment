@@ -1,0 +1,55 @@
+{{- if .Values.deployment.ingressEnabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress
+  annotations:
+    ingress.nginx.kubernetes.io/rewrite-target: /$2
+    ingress.nginx.kubernetes.io/use-regex: "true"
+    {{- if (not .Values.deployment.localTesting) }}
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    {{ end }}
+  labels:
+    app: ingress
+spec:
+  ingressClassName: nginx
+  defaultBackend: 
+    service: 
+      name: {{ .Values.frontend.appName }}
+      port:
+        number: {{ .Values.frontend.service.port }}
+  rules:
+    - host: mylocaltestsite.local
+      http:
+        paths:
+          - path: /auth(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: {{ .Values.authentication.appName }}
+                port:
+                  number: {{ .Values.authentication.service.port }}
+          - path: /webapp(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: {{ .Values.frontend.appName }}
+                port:
+                  number: {{ .Values.frontend.service.port }}
+          - path: /recommend(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: {{ .Values.recommendation.appName }}
+                port:
+                  number: {{ .Values.recommendation.service.port }}
+          - path: /user-data(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: {{ .Values.userdatabase.appName }}
+                port:
+                  number: {{ .Values.userdatabase.service.port }}
+{{- end }}

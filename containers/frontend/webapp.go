@@ -59,7 +59,6 @@ func homePage(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, nil)
 }
 
-// write response properly for data here...
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	log.Debugf("Login handler was called")
 	helloCounter.With(prometheus.Labels{"url": "/login"}).Inc()
@@ -89,14 +88,18 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	responseBody, err := io.ReadAll(response.Body)
+	if err != nil {
+		log.Debugf("Error reading response: %v", err)
+		http.Error(w, "Error reading response: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprintf(w, "Response from API: %s", responseBody)
+
 	authToken = token["token"]
 	user = username
-	fmt.Fprintf(w, "Response from API: %s", token)
-	// http.Redirect(w, r, "/", http.StatusSeeOther)
-	// return
 }
 
-// add spot on index.html to display result beyond logging
 func submissionHandler(w http.ResponseWriter, r *http.Request) {
 	log.Debugf("Submission handler was called")
 	helloCounter.With(prometheus.Labels{"url": "/submit"}).Inc()
@@ -106,7 +109,6 @@ func submissionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// send request to user data server to alter user data
 	query := map[string]string{
 		"Username":  user,
 		"Movie":     r.FormValue("movie name"),
@@ -114,7 +116,6 @@ func submissionHandler(w http.ResponseWriter, r *http.Request) {
 		"Operation": r.FormValue("operation"),
 	}
 
-	// Marshal requestData to JSON
 	jsonData, err := json.Marshal(query)
 	if err != nil {
 		log.Debugf("Error marshaling request data: %v", err)
@@ -130,21 +131,15 @@ func submissionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer response.Body.Close()
 
-	// Read and display the response
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {
 		log.Debugf("Error reading response: %v", err)
 		http.Error(w, "Error reading response: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	fmt.Fprintf(w, "Response from API: %s", responseBody)
-
-	// http.Redirect(w, r, "/", http.StatusSeeOther)
-	// return
 }
 
-// might be broken... -> way i read...
 func recommendationHandler(w http.ResponseWriter, r *http.Request) {
 	log.Debugf("Recommendation handler was called")
 	helloCounter.With(prometheus.Labels{"url": "/recommend"}).Inc()
@@ -161,10 +156,16 @@ func recommendationHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error while sending request to recommendation server: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintf(w, "Response from API: %s", response)
+	defer response.Body.Close()
 
-	// http.Redirect(w, r, "/", http.StatusSeeOther)
-	// return
+	responseBody, err := io.ReadAll(response.Body)
+	if err != nil {
+		log.Debugf("Error reading response: %v", err)
+		http.Error(w, "Error reading response: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintf(w, "Response from API: %s", responseBody)
 }
 
 func sendAPIRequest(url string, jsonData []byte, token string) (*http.Response, error) {
