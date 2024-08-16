@@ -10,7 +10,7 @@ To learn more about the release, try:
 For accessing all services through Ingress, try:
   $ minikube tunnel
   $ curl --resolve "mylocaltestsite.local:80:127.0.0.1" -i http://mylocaltestsite.local/
-  $ Test endpoints: /auth, /webapp, /recommend, /user-data
+  $ Available endpoints: /auth, /webapp, /recommend, /user-data
   {{- else }}
 
 For only accessing the web application through NodePort, try: 
