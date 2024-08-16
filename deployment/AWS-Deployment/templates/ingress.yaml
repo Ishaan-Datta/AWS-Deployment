@@ -4,8 +4,8 @@ kind: Ingress
 metadata:
   name: ingress
   annotations:
-    ingress.nginx.kubernetes.io/rewrite-target: /$2
-    ingress.nginx.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
     {{- if (not .Values.deployment.localTesting) }}
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/target-type: ip
@@ -15,11 +15,6 @@ metadata:
     app: ingress
 spec:
   ingressClassName: nginx
-  defaultBackend: 
-    service: 
-      name: {{ .Values.frontend.appName }}
-      port:
-        number: {{ .Values.frontend.service.port }}
   rules:
     - host: mylocaltestsite.local
       http:

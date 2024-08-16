@@ -52,7 +52,7 @@ spec:
         readinessProbe:
           httpGet:
             path: /ready
-            port: {{ .Values.authentication.image.port }}
+            port: {{ .Values.frontend.image.port }}
           initialDelaySeconds: 10
           timeoutSeconds: 1
           periodSeconds: 5

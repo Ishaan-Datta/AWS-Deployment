@@ -199,8 +199,6 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 func readyHandler(w http.ResponseWriter, r *http.Request) {
 	log.Debugf("Ready handler was called")
 	helloCounter.With(prometheus.Labels{"url": "/ready"}).Inc()
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "{'ready':'true'}")
 }
 

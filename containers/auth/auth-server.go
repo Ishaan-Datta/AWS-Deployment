@@ -79,7 +79,7 @@ func init() {
 func newHandler(w http.ResponseWriter, r *http.Request) {
 	log.Infof("Newhandler was called")
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, "Welcome to the auth API. Valid endpoints are /login, /token, /version, /status, /metrics")
+	fmt.Fprintf(w, "Welcome to the auth API. Valid endpoints are /login, /token, /version, /status, /metrics, /ready")
 	helloCounter.With(prometheus.Labels{"url": "/auth"}).Inc()
 }
 
@@ -159,8 +159,6 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 func readyHandler(w http.ResponseWriter, r *http.Request) {
 	log.Debugf("Ready handler was called")
 	helloCounter.With(prometheus.Labels{"url": "/ready"}).Inc()
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "{'ready':'true'}")
 }
 

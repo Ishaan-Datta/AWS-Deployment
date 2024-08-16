@@ -14,7 +14,7 @@ WORKDIR /app
 
 RUN go mod init user-data
 RUN go mod tidy
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 CC="zig cc -target x86_64-linux-musl" CXX="zig c++ -target x86_64-linux-musl" go build -ldflags="-w -s" -o user-data .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 CC="zig cc -target x86_64-linux-musl" CXX="zig c++ -target x86_64-linux-musl" go build -ldflags="-w -s" -o user-data .
 RUN chmod +x user-data
 
 FROM scratch

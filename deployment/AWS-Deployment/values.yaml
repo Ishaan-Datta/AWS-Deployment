@@ -9,7 +9,7 @@ frontend:
   image:
     repository: ishaandatta/aws-deployment
     tag: web
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
     port: 8080
   service:
     port: 8080
@@ -22,7 +22,7 @@ authentication:
   image:
     repository: ishaandatta/aws-deployment
     tag: auth
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
     port: 8081
   service:
     type: ClusterIP
@@ -35,7 +35,7 @@ recommendation:
   image:
     repository: ishaandatta/aws-deployment
     tag: rec
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
     port: 8082
   service:
     type: ClusterIP
@@ -49,7 +49,7 @@ userdatabase:
     repository: ishaandatta/aws-deployment
     local_tag: ldata
     cloud_tag: cdata
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
     port: 8083
   service:
     type: ClusterIP
