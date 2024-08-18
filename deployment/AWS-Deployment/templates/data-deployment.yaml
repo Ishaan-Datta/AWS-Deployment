@@ -12,13 +12,15 @@ spec:
       labels:
         app: {{ .Values.userdatabase.appName }}
     spec:
-      containers:
+      containers: 
       - name: {{ .Values.userdatabase.appName }}-{{ randAlpha 5 | lower }}
+        # {{- if include "mychart.shouldDeploy" . }}
         {{- if (.Values.deployment.localTesting) }}
         image: "{{ .Values.userdatabase.image.repository }}:{{ .Values.userdatabase.image.local_tag }}"
         {{- else }}
         image: "{{ .Values.userdatabase.image.repository }}:{{ .Values.userdatabase.image.cloud_tag }}"
         {{ end }}
+        # {{- end }}
         imagePullPolicy: {{ .Values.userdatabase.image.pullPolicy }}
         resources: 
           requests:
