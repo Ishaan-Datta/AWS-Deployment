@@ -7,8 +7,8 @@ terraform {
 }
 
 provider "aws" {
-  alias = "ca-west-1"
-  region = "ca-west-1"
+  alias = "us-east-1"
+  region = "us-east-1"
 }
 
 data "aws_availability_zones" "available" {
@@ -24,12 +24,12 @@ resource "random_string" "random" {
 }
 
 resource "aws_s3_bucket" "kops_bucket" {
-  provider = aws.ca-west-1
+  provider = aws.us-east-1
   bucket   = "${random_string.random.result}-kops-bucket"
 }
 
 resource "aws_s3_bucket_public_access_block" "example" {
-  provider = aws.ca-west-1
+  provider = aws.us-east-1
   bucket   = aws_s3_bucket.kops_bucket.id
 
   block_public_acls       = false
@@ -39,7 +39,7 @@ resource "aws_s3_bucket_public_access_block" "example" {
 }
 
 resource "aws_s3_bucket_ownership_controls" "example" {
-  provider = aws.ca-west-1
+  provider = aws.us-east-1
   bucket   = aws_s3_bucket.kops_bucket.id
   rule {
     object_ownership = "BucketOwnerPreferred"
@@ -47,7 +47,7 @@ resource "aws_s3_bucket_ownership_controls" "example" {
 }
 
 resource "aws_s3_bucket_acl" "example" {
-  provider = aws.ca-west-1
+  provider = aws.us-east-1
   depends_on = [
     aws_s3_bucket_public_access_block.example,
     aws_s3_bucket_ownership_controls.example,

@@ -144,3 +144,176 @@ resource "helm_release" "helm_deployment" {
     file("backend-values.yaml")
   ]
 }
+
+# resource "null_resource" "kops_cluster" {
+#   provisioner "local-exec" {
+#     command = <<EOT
+#       kops create cluster \
+#         --name=mycluster.k8s.local \
+#         --state=s3://my-kops-state-store \
+#         --zones=us-west-2a,us-west-2b \
+#         --node-count=2 \
+#         --node-size=t3.medium \
+#         --master-size=t3.medium \
+#         --vpc=${aws_vpc.main_vpc.id} \
+#         --subnets=${aws_subnet.private_subnet_1.id},${aws_subnet.private_subnet_2.id} \
+#         --out=kops-terraform/
+      
+#       kops update cluster --name=mycluster.k8s.local --yes
+#       kops export kubecfg --name=mycluster.k8s.local
+#     EOT
+#   }
+
+#   triggers = {
+#     cluster_update = "${timestamp()}"
+#   }
+
+#   depends_on = [aws_vpc.main_vpc]
+# }
+
+# provider "helm" {
+#   kubernetes {
+#     config_path = "~/.kube/config"
+#   }
+# }
+
+# resource "helm_release" "nginx_ingress" {
+#   count = var.use_ingress_controller ? 1 : 0
+
+#   name       = "nginx-ingress"
+#   repository = "https://kubernetes.github.io/ingress-nginx"
+#   chart      = "ingress-nginx"
+#   namespace  = "kube-system"
+
+#   values = [
+#     file("values.yaml")
+#   ]
+# }
+
+# resource "helm_release" "frontend_app" {
+#   name       = "frontend-app"
+#   repository = "https://example.com/charts"
+#   chart      = "frontend-app"
+#   namespace  = "default"
+
+#   values = [
+#     file("frontend-values.yaml")
+#   ]
+# }
+
+# resource "helm_release" "backend_app" {
+#   name       = "backend-app"
+#   repository = "https://example.com/charts"
+#   chart      = "backend-app"
+#   namespace  = "default"
+
+#   values = [
+#     file("backend-values.yaml")
+#   ]
+# }
+
+# resource "helm_release" "nginx_ingress" {
+#   name       = "nginx-ingress"
+#   repository = "https://kubernetes.github.io/ingress-nginx/"
+#   chart      = "ingress-nginx"
+#   namespace  = "ingress-nginx"
+
+#   set {
+#     name  = "controller.service.type"
+#     value = "LoadBalancer"
+#   }
+# }
+
+# resource "aws_iam_role" "alb_ingress_controller" {
+#   name = "alb-ingress-controller"
+#   assume_role_policy = jsonencode({
+#     Version = "2012-10-17",
+#     Statement = [{
+#       Effect = "Allow",
+#       Principal = {
+#         Service = "ec2.amazonaws.com"
+#       },
+#       Action = "sts:AssumeRole"
+#     }]
+#   })
+# }
+
+# resource "aws_iam_role_policy_attachment" "alb_ingress_controller_attach" {
+#   role       = aws_iam_role.alb_ingress_controller.name
+#   policy_arn = "arn:aws:iam::aws:policy/ElasticLoadBalancingFullAccess"
+# }
+
+# provider "helm" {
+#   kubernetes {
+#     config_path = "~/.kube/config"
+#   }
+# }
+
+# resource "helm_release" "alb_ingress" {
+#   name       = "aws-load-balancer-controller"
+#   chart      = "aws-load-balancer-controller"
+#   repository = "https://aws.github.io/eks-charts"
+#   namespace  = "kube-system"
+
+#   set {
+#     name  = "clusterName"
+#     value = "my-cluster"
+#   }
+
+#   set {
+#     name  = "serviceAccount.create"
+#     value = "false"
+#   }
+# }
+
+# resource "kubernetes_service" "my_service" {
+#   metadata {
+#     name      = "my-service"
+#     namespace = "default"
+#     annotations = {
+#       "service.beta.kubernetes.io/aws-load-balancer-internal" = "0.0.0.0/0"
+#     }
+#   }
+#   spec {
+#     selector = {
+#       app = "my-app"
+#     }
+#     port {
+#       port        = 80
+#       target_port = 8080
+#     }
+#     type = "LoadBalancer"
+#   }
+# }
+
+# provider "aws" {
+#   region = "us-east-1"  # Replace with your AWS region
+# }
+
+# provider "kubernetes" {
+#   host                   = "https://<KUBERNETES_API_SERVER>"
+#   token                  = "<KUBERNETES_TOKEN>"
+#   cluster_ca_certificate = file("<PATH_TO_CA_CERT>")
+# }
+
+# Replace <KUBERNETES_API_SERVER>, <KUBERNETES_TOKEN>, and <PATH_TO_CA_CERT> with the actual values from your kOps cluster. You can get these values from the kubeconfig file that kOps generates.
+
+# provider "helm" {
+#   kubernetes {
+#     host                   = "https://<KUBERNETES_API_SERVER>"
+#     token                  = "<KUBERNETES_TOKEN>"
+#     cluster_ca_certificate = file("<PATH_TO_CA_CERT>")
+#   }
+# }
+
+# resource "helm_release" "nginx_ingress" {
+#   name       = "nginx-ingress"
+#   repository = "https://kubernetes.github.io/ingress-nginx"
+#   chart      = "ingress-nginx"
+#   namespace  = "default"
+  
+#   set {
+#     name  = "controller.service.type"
+#     value = "LoadBalancer"
+#   }
+# }
