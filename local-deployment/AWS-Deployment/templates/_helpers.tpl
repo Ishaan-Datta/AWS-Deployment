@@ -1,53 +1,28 @@
 {{/*
 Conditional Logic Section
 */}}
-{{- define "mychart.shouldDeploy" -}}
-{{- if and .Values.someFeature.enabled (eq .Values.someFeature.type "special") -}}
-true
-{{- else -}}
-false
-{{- end -}}
-{{- end -}}
 
-{{- if (.Values.deployment.localTesting) }}
-image: "{{ .Values.userdatabase.image.repository }}:{{ .Values.userdatabase.image.local_tag }}"
+{{- define "AWS-Deployment-Chart.frontendtype" }}
+{{- if and .Values.deployment.localTesting (not .Values.deployment.ingressEnabled) }}
+    type: NodePort
+{{- else if and (not .Values.deployment.localTesting) (not .Values.deployment.ingressEnabled) }}
+    type: LoadBalancer
 {{- else }}
-image: "{{ .Values.userdatabase.image.repository }}:{{ .Values.userdatabase.image.cloud_tag }}"
-{{ end }}
-
-{{- if ( not .Values.deployment.localTesting) }}
-- name: DB_USERNAME
-value: "{{ .Values.userdatabase.env.DB_USERNAME }}"
-- name: DB_PASSWORD
-value: "{{ .Values.userdatabase.env.DB_PASSWORD }}"
-- name: DB_URL
-value: "{{ .Values.userdatabase.env.DB_URL }}"
+    type: ClusterIP
+{{- end }}
 {{- end }}
 
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ .Values.frontend.appName }}
-  {{- if and (not .Values.deployment.localTesting) (not .Values.deployment.ingressEnabled) }}
-  annotations:
-    service.beta.kubernetes.io/aws-load-balancer-internal: "false" # This makes the ALB public-facing
-  {{ end }}
-spec:
-  ports:
-    - port: {{ .Values.frontend.service.port }}
-      targetPort: {{ .Values.frontend.image.port }}
-      {{- if and .Values.deployment.localTesting (not .Values.deployment.ingressEnabled) }}
-      nodePort: {{ .Values.frontend.service.nodePort }}
-      {{ end }}
-  selector:
-    app: {{ .Values.frontend.appName }}
-  {{- if and .Values.deployment.localTesting (not .Values.deployment.ingressEnabled) }}
-  type: NodePort
-  {{ else if and (not .Values.deployment.localTesting) (not .Values.deployment.ingressEnabled) }}
-  type: LoadBalancer
-  {{ else }}
-  type: ClusterIP
-  {{ end }}
+{{/*
+Change bottom to .cloud_tag when done testing
+*/}}
+
+{{- define "AWS-Deployment-Chart.userdbImage" }}
+{{- if .Values.deployment.localTesting }}
+        image: "{{ .Values.userdatabase.image.repository }}:{{ .Values.userdatabase.image.local_tag }}"
+{{- else }}
+        image: "{{ .Values.userdatabase.image.repository }}:{{ .Values.userdatabase.image.local_tag }}"
+{{- end }}
+{{- end }}
 
 {{/*
 Expand the name of the chart.

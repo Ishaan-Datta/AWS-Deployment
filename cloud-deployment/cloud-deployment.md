@@ -1,5 +1,10 @@
 ## Prerequisites
 
+install kubectl
+install kops
+install awscli
+login to awscli
+
 download terraform, install, add to path
 terraform init
 terraform plan
@@ -42,3 +47,5 @@ kubectl get pods -n ingress-nginx
 kubectl get svc -n ingress-nginx
 
 map of configuration settings and what they change based on boolean logic
+
+In order to use gossip-based DNS, configure the cluster domain name to end with .k8s.local

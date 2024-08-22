@@ -14,13 +14,7 @@ spec:
     spec:
       containers: 
       - name: {{ .Values.userdatabase.appName }}-{{ randAlpha 5 | lower }}
-        # {{- if include "mychart.shouldDeploy" . }}
-        {{- if (.Values.deployment.localTesting) }}
-        image: "{{ .Values.userdatabase.image.repository }}:{{ .Values.userdatabase.image.local_tag }}"
-        {{- else }}
-        image: "{{ .Values.userdatabase.image.repository }}:{{ .Values.userdatabase.image.cloud_tag }}"
-        {{ end }}
-        # {{- end }}
+        {{- template "AWS-Deployment-Chart.userdbImage" . }}
         imagePullPolicy: {{ .Values.userdatabase.image.pullPolicy }}
         resources: 
           requests:
@@ -42,15 +36,6 @@ spec:
             value: "http://{{ .Values.authentication.appName }}:{{ .Values.authentication.service.port }}"
           - name: LOG_LEVEL
             value: "{{ .Values.userdatabase.logLevel }}"
-          # Conditionally include AWS-related environment variables
-          {{- if ( not .Values.deployment.localTesting) }}
-          - name: DB_USERNAME
-            value: "{{ .Values.userdatabase.env.DB_USERNAME }}"
-          - name: DB_PASSWORD
-            value: "{{ .Values.userdatabase.env.DB_PASSWORD }}"
-          - name: DB_URL
-            value: "{{ .Values.userdatabase.env.DB_URL }}"
-          {{- end }}
         livenessProbe:
           httpGet:
             path: /status

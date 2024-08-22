@@ -41,6 +41,7 @@ metadata:
   {{- if and (not .Values.deployment.localTesting) (not .Values.deployment.ingressEnabled) }}
   annotations:
     service.beta.kubernetes.io/aws-load-balancer-internal: "false" # This makes the ALB public-facing
+    service.beta.kubernetes.io/aws-load-balancer-type: "classic"  # Optional for classic ELB
   {{ end }}
 spec:
   ports:
@@ -51,10 +52,4 @@ spec:
       {{ end }}
   selector:
     app: {{ .Values.frontend.appName }}
-  {{- if and .Values.deployment.localTesting (not .Values.deployment.ingressEnabled) }}
-  type: NodePort
-  {{ else if and (not .Values.deployment.localTesting) (not .Values.deployment.ingressEnabled) }}
-  type: LoadBalancer
-  {{ else }}
-  type: ClusterIP
-  {{ end }}
+    {{- template "AWS-Deployment-Chart.frontendtype" }}

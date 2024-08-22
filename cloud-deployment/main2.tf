@@ -653,3 +653,8 @@
 # output "kops_state_store" {
 #   value = aws_s3_bucket.kops_state_store.bucket
 # }
+
+# helm install nginx-ingress ingress-nginx/ingress-nginx \
+#   --set controller.service.type=LoadBalancer \
+#   --set controller.service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-internal"="false" \
+#   --set controller.service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-type"="classic"
