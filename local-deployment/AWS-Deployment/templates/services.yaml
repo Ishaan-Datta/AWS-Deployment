@@ -42,8 +42,9 @@ metadata:
   annotations:
     service.beta.kubernetes.io/aws-load-balancer-internal: "false" # This makes the ALB public-facing
     service.beta.kubernetes.io/aws-load-balancer-type: "classic"  # Optional for classic ELB
-  {{ end }}
+  {{- end }}
 spec:
+  {{- template "AWS-Deployment-Chart.frontendtype" }}
   ports:
     - port: {{ .Values.frontend.service.port }}
       targetPort: {{ .Values.frontend.image.port }}
@@ -52,4 +53,4 @@ spec:
       {{ end }}
   selector:
     app: {{ .Values.frontend.appName }}
-    {{- template "AWS-Deployment-Chart.frontendtype" }}
+    
