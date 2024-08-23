@@ -40,11 +40,11 @@ metadata:
   name: {{ .Values.frontend.appName }}
   {{- if and (not .Values.deployment.localTesting) (not .Values.deployment.ingressEnabled) }}
   annotations:
-    service.beta.kubernetes.io/aws-load-balancer-internal: "false" # This makes the ALB public-facing
-    service.beta.kubernetes.io/aws-load-balancer-type: "classic"  # Optional for classic ELB
+    service.beta.kubernetes.io/aws-load-balancer-internal: "false" 
+    service.beta.kubernetes.io/aws-load-balancer-type: "classic"
   {{- end }}
 spec:
-  {{- template "AWS-Deployment-Chart.frontendtype" }}
+  {{- template "AWS-Deployment-Chart.frontendtype" . }}
   ports:
     - port: {{ .Values.frontend.service.port }}
       targetPort: {{ .Values.frontend.image.port }}

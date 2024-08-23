@@ -1,6 +1,6 @@
 deployment:
-  localTesting: true
-  ingressEnabled: true
+  localTesting: false
+  ingressEnabled: false
 
 frontend:
   logLevel: debug

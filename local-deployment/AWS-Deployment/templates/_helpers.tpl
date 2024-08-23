@@ -2,14 +2,16 @@
 Conditional Logic Section
 */}}
 
-{{- define "AWS-Deployment-Chart.frontendtype" }}
-{{- if and .Values.deployment.localTesting (not .Values.deployment.ingressEnabled) }}
-  type: NodePort
-{{- else if and (not .Values.deployment.localTesting) (not .Values.deployment.ingressEnabled) }}
-  type: LoadBalancer
-{{- else }}
+{{- define "AWS-Deployment-Chart.frontendtype" -}}
+  {{- if .Values.deployment.ingressEnabled }}
   type: ClusterIP
-{{- end }}
+  {{- else }}
+    {{- if .Values.deployment.localTesting }}
+  type: NodePort
+    {{- else }}
+  type: LoadBalancer
+    {{- end }}
+  {{- end }}
 {{- end }}
 
 {{/*
