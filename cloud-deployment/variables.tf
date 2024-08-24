@@ -17,3 +17,10 @@ variable "allowed_ips" {
   description = "Allowed IPs to access RDS"
   type        = list(string)
 }
+
+# take input argument variable that will set the argument within the helm deployment
+variable "use_ingress_controller" {
+  description = "Toggle to use Ingress Controller (true) or Direct Load Balancer (false)"
+  type        = bool
+  default     = true
+}

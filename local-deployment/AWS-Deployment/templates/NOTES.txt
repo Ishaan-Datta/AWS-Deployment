@@ -7,17 +7,36 @@ To learn more about the release, try:
 {{- if .Values.deployment.localTesting }}
   {{- if .Values.deployment.ingressEnabled }}
 
-For accessing all services through Ingress, try:
+For accessing all services through the Ingress controller, try:
   $ minikube tunnel
   $ curl --resolve "mylocaltestsite.local:80:127.0.0.1" -i http://mylocaltestsite.local/
   $ Available endpoints: /auth, /webapp, /recommend, /user-data
+  
+To uninstall: 
+  $ helm uninstall {{ .Release.Name }}
   {{- else }}
 
-For only accessing the web application through NodePort, try: 
-  $ kubectl port-forward svc/frontend 8080:8080
-  $ curl http://localhost:8080
+For only accessing the web application through the NodePort service, try: 
+  $ kubectl port-forward svc/frontend 80:80
+  $ curl http://localhost
   $ minikube service web --url
+  $ Access the address in your browser
+
+To uninstall: 
+  $ helm uninstall {{ .Release.Name }}
+  {{- end }}
+  
+{{- else }}
+  {{- if .Values.deployment.ingressEnabled }}
+
+For accessing all services through the Ingress controller, try:
+  $ kubectl get ing
+  $ Access the address in your browser
+  $ Available endpoints: /auth, /webapp, /recommend, /user-data
+  {{- else }}
+
+For only accessing the web application through the LoadBalancer service, try:
+  $ kubectl get svc/web
+  $ Access the address in your browser
   {{- end }}
 {{- end}}
-
-To uninstall: helm uninstall {{ .Release.Name }}

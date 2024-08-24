@@ -1,76 +1,157 @@
 terraform {
-  required_providers { # add required providers here
-    aws = {
-      version = "4.67.0"
-    }
-    kubernetes = {
-      source = "hashicorp/kubernetes"
-    }
-    helm = {
-      source = "hashicorp/helm"
-    }
+  backend "s3" {
+    bucket = "tf-state-blog" # replace
+    key    = "dev/terraform"
+    region = "eu-west-2"
   }
-}
-
-# Configure AWS provider
-provider "aws" {
-  alias = "us-east-1"
-  region = "us-east-1" # Update with your desired region
 }
 
 data "aws_availability_zones" "available" {
   state = "available"
 }
 
-# K8s Provider Configuration: allows Terraform to interact with your Kubernetes cluster and manage Kubernetes resources
-provider "kubernetes" {
-  host                   = aws_eks_cluster.eks_cluster.endpoint
-  cluster_ca_certificate = base64decode(aws_eks_cluster.eks_cluster.certificate_authority[0].data)
-  token                  = data.aws_eks_cluster_auth.auth.token
+variable "az_count" {
+  type = number
+  default = 3
 }
 
-# Helm Provider Configuration: allows Terraform to manage Helm charts
-provider "helm" {
-  kubernetes {
-    host                   = aws_eks_cluster.eks_cluster.endpoint
-    cluster_ca_certificate = base64decode(aws_eks_cluster.eks_cluster.certificate_authority[0].data)
-    token                  = data.aws_eks_cluster_auth.auth.token
-    # config_path = "~/.kube/config"
+locals { 
+  azs =  slice(data.aws_availability_zones.available.names, 0, 3)
+  environment = "dev"
+  kops_state_bucket_name = "${random_string.random.result}-kops-bucket"
+  kubernetes_cluster_name = "kops-cluster-${random_string.random.result}.k8s.local"
+  vpc_name = "idfk"
+  # need to keep ingress ips?
+
+  tags = {
+    terraform = true
+    environment = "dev"
   }
 }
 
-resource "aws_s3_bucket" "kops_bucket" {
-  provider = aws.us-east-1
-  bucket   = "AWS-test-kops-bucket" # variable later
-}
+module "vpc" {
+  source = "terraform-aws-modules/vpc/aws"
+  version = "1.46.0"
+  name = "${local.vpc_name}"
+  cidr = "10.0.0.0/16"
+  azs                = ["${local.azs}"]
+  private_subnets    = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"] # use generation
+  public_subnets     = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"] # use generation
+  enable_nat_gateway = true
+#   enable_dns_support = true
+#   enable_dns_hostnames = true
 
-resource "aws_s3_bucket_public_access_block" "example" {
-  provider = aws.us-east-1
-  bucket   = aws_s3_bucket.kops_bucket.id
+  private_subnet_tags = {
+    "kubernetes.io/cluster/${local.kubernetes_cluster_name}" = "owned"
+    "kubernetes.io/role/elb" = "1"
+  }
 
-  block_public_acls       = false
-  block_public_policy     = false
-  ignore_public_acls      = false
-  restrict_public_buckets = false
-}
+    tags = {
+    "kubernetes.io/cluster/${local.kubernetes_cluster_name}" = "shared"
+    "terraform"                                              = true
+    "environment"                                            = "${local.environment}"
+  }
 
-resource "aws_s3_bucket_ownership_controls" "example" {
-  provider = aws.us-east-1
-  bucket   = aws_s3_bucket.kops_bucket.id
-  rule {
-    object_ownership = "BucketOwnerPreferred"
+  public_subnet_tags = {
+    "kubernetes.io/cluster/${local.kubernetes_cluster_name}" = "owned"
+    "kubernetes.io/role/elb" = true
   }
 }
 
-resource "aws_s3_bucket_acl" "example" {
-  provider = aws.us-east-1
-  depends_on = [
-    aws_s3_bucket_public_access_block.example,
-    aws_s3_bucket_ownership_controls.example,
-  ]
+# VPC
+resource "aws_vpc" "main_vpc" {
+  cidr_block = "10.0.0.0/16"
+  enable_dns_support = true
+  enable_dns_hostnames = true
+}
 
-  bucket = aws_s3_bucket.kops_bucket.id
-  acl    = "public-read"
+resource "aws_subnet" "public_subnet" {
+  count = 2
+  vpc_id = aws_vpc.k8s_vpc.id
+  cidr_block = cidrsubnet(aws_vpc.k8s_vpc.cidr_block, 8, count.index)
+  availability_zone = element(data.aws_availability_zones.available.names, count.index)
+  map_public_ip_on_launch = true
+}
+
+resource "aws_subnet" "public_subnet_1" {
+  vpc_id            = aws_vpc.main_vpc.id
+  cidr_block        = "10.0.1.0/24" # public subnet number two is 10.0.2.0/24
+# private subnet would be 10.0.3.0/24
+  availability_zone = "us-west-2a"
+  map_public_ip_on_launch = true
+}
+
+# Internet Gateway
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.main_vpc.id
+}
+
+# NAT Gateway
+resource "aws_eip" "nat_eip" {
+  vpc = true
+}
+
+resource "aws_nat_gateway" "nat_gw" {
+  allocation_id = aws_eip.nat_eip.id
+  subnet_id     = aws_subnet.public_subnet_1.id
+}
+
+# Route Tables
+resource "aws_route_table" "public_rt" {
+  vpc_id = aws_vpc.main_vpc.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+}
+
+resource "aws_route_table_association" "public_rt_assoc_1" {
+  subnet_id      = aws_subnet.public_subnet_1.id
+  route_table_id = aws_route_table.public_rt.id
+}
+
+resource "aws_route_table" "private_rt" {
+  vpc_id = aws_vpc.main_vpc.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.nat_gw.id
+  }
+
+  tags = {
+    Name = "private_rt"
+  }
+}
+
+resource "aws_security_group" "k8s_sg" {
+  vpc_id = aws_vpc.main_vpc.id
+
+  ingress {
+    from_port   = 0
+    to_port     = 65535
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/16"]  # Allow all traffic within the VPC
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "k8s_sg"
+  }
+}
+
+# Create S3 Bucket for Kops state storage need to turn on versioning
+resource "aws_s3_bucket" "kops_state_store" {
+  bucket = "${local.kops_state_bucket_name}"
+  acl    = "private"
+  force_destroy = true
+  tags = "${merge(local.tags)}"
 }
 
 # IAM Role for Kops cluster management
@@ -95,12 +176,39 @@ resource "aws_iam_role" "kops_role" {
   ]
 }
 
-# Helm chart deployment
+resource "null_resource" "kops_cluster" {
+  provisioner "local-exec" {
+    command = <<EOT
+      kops create cluster \
+        --name=${var.kops_cluster_name} \
+        --state=${var.kops_state_store} \
+        --zones=${var.aws_zones} \
+        --node-count=1 \
+        --node-size=t3.medium \
+        --master-size=t3.medium \
+        --vpc=${aws_vpc.main_vpc.id} \
+        --subnets=${aws_subnet.private_subnet_1.id},${aws_subnet.private_subnet_2.id} \
+        --out=kops-terraform/
+      
+      kops update cluster --name=mycluster.k8s.local --yes
+      kops export kubecfg --name=mycluster.k8s.local
+    EOT
+  }
+
+  triggers = {
+    cluster_update = "${timestamp()}"
+  }
+
+  depends_on = [aws_vpc.main_vpc]
+}
+
 resource "helm_release" "nginx_ingress" {
+  # conditionally deploying ingress helm chart if use_ingress_controller is true
+  count     = var.use_ingress_controller ? 1 : 0
+
   name       = "nginx-ingress"
   repository = "https://kubernetes.github.io/ingress-nginx/"
   chart      = "ingress-nginx"
-  version    = "4.0.19"
   namespace  = "ingress-nginx"
 
   set {
@@ -109,31 +217,17 @@ resource "helm_release" "nginx_ingress" {
   }
 
   set {
-    name  = "controller.config.name"
-    value = "custom-nginx-config"
-  }
-
-  # set {
-  #   name  = "ingress.enabled"
-  #   value = "true"
-  # }
-
-  set {
-    name  = "env.DB_USERNAME"
-    value = random_password.db_username.result
+    name  = "controller.service.annotations.service.beta.kubernetes.io/aws-load-balancer-internal"
+    value = "false"
   }
 
   set {
-    name  = "env.DB_PASSWORD"
-    value = random_password.db_password.result
-  }
-
-  set {
-    name  = "env.DB_URL"
-    value = aws_db_instance.example.endpoint
+    name = "controller.service.annotations.service.beta.kubernetes.io/aws-load-balancer-type"
+    value = "classic"
   }
 }
 
+# populate from helm.sh repo
 resource "helm_release" "helm_deployment" {
   name       = "helm_deployment"
   repository = "https://example.com/charts"
@@ -145,175 +239,20 @@ resource "helm_release" "helm_deployment" {
   ]
 }
 
-# resource "null_resource" "kops_cluster" {
-#   provisioner "local-exec" {
-#     command = <<EOT
-#       kops create cluster \
-#         --name=mycluster.k8s.local \
-#         --state=s3://my-kops-state-store \
-#         --zones=us-west-2a,us-west-2b \
-#         --node-count=2 \
-#         --node-size=t3.medium \
-#         --master-size=t3.medium \
-#         --vpc=${aws_vpc.main_vpc.id} \
-#         --subnets=${aws_subnet.private_subnet_1.id},${aws_subnet.private_subnet_2.id} \
-#         --out=kops-terraform/
-      
-#       kops update cluster --name=mycluster.k8s.local --yes
-#       kops export kubecfg --name=mycluster.k8s.local
-#     EOT
-#   }
+resource "null_resource" "wait_for_lb" {
+  provisioner "local-exec" {
+    command = "sleep 30"
+  }
 
-#   triggers = {
-#     cluster_update = "${timestamp()}"
-#   }
+  depends_on = [helm_release.helm_deployment]
+}
 
-#   depends_on = [aws_vpc.main_vpc]
+// Filtering by Tags: If the LoadBalancer name is not unique, you can filter by tags that Kubernetes typically applies to the LoadBalancer, such as kubernetes.io/service-name.
+
+# data "aws_lb" "nginx_lb" {
+#   name = helm_release.nginx_ingress.name
 # }
 
-# provider "helm" {
-#   kubernetes {
-#     config_path = "~/.kube/config"
-#   }
-# }
-
-# resource "helm_release" "nginx_ingress" {
-#   count = var.use_ingress_controller ? 1 : 0
-
-#   name       = "nginx-ingress"
-#   repository = "https://kubernetes.github.io/ingress-nginx"
-#   chart      = "ingress-nginx"
-#   namespace  = "kube-system"
-
-#   values = [
-#     file("values.yaml")
-#   ]
-# }
-
-# resource "helm_release" "frontend_app" {
-#   name       = "frontend-app"
-#   repository = "https://example.com/charts"
-#   chart      = "frontend-app"
-#   namespace  = "default"
-
-#   values = [
-#     file("frontend-values.yaml")
-#   ]
-# }
-
-# resource "helm_release" "backend_app" {
-#   name       = "backend-app"
-#   repository = "https://example.com/charts"
-#   chart      = "backend-app"
-#   namespace  = "default"
-
-#   values = [
-#     file("backend-values.yaml")
-#   ]
-# }
-
-# resource "helm_release" "nginx_ingress" {
-#   name       = "nginx-ingress"
-#   repository = "https://kubernetes.github.io/ingress-nginx/"
-#   chart      = "ingress-nginx"
-#   namespace  = "ingress-nginx"
-
-#   set {
-#     name  = "controller.service.type"
-#     value = "LoadBalancer"
-#   }
-# }
-
-# resource "aws_iam_role" "alb_ingress_controller" {
-#   name = "alb-ingress-controller"
-#   assume_role_policy = jsonencode({
-#     Version = "2012-10-17",
-#     Statement = [{
-#       Effect = "Allow",
-#       Principal = {
-#         Service = "ec2.amazonaws.com"
-#       },
-#       Action = "sts:AssumeRole"
-#     }]
-#   })
-# }
-
-# resource "aws_iam_role_policy_attachment" "alb_ingress_controller_attach" {
-#   role       = aws_iam_role.alb_ingress_controller.name
-#   policy_arn = "arn:aws:iam::aws:policy/ElasticLoadBalancingFullAccess"
-# }
-
-# provider "helm" {
-#   kubernetes {
-#     config_path = "~/.kube/config"
-#   }
-# }
-
-# resource "helm_release" "alb_ingress" {
-#   name       = "aws-load-balancer-controller"
-#   chart      = "aws-load-balancer-controller"
-#   repository = "https://aws.github.io/eks-charts"
-#   namespace  = "kube-system"
-
-#   set {
-#     name  = "clusterName"
-#     value = "my-cluster"
-#   }
-
-#   set {
-#     name  = "serviceAccount.create"
-#     value = "false"
-#   }
-# }
-
-# resource "kubernetes_service" "my_service" {
-#   metadata {
-#     name      = "my-service"
-#     namespace = "default"
-#     annotations = {
-#       "service.beta.kubernetes.io/aws-load-balancer-internal" = "0.0.0.0/0"
-#     }
-#   }
-#   spec {
-#     selector = {
-#       app = "my-app"
-#     }
-#     port {
-#       port        = 80
-#       target_port = 8080
-#     }
-#     type = "LoadBalancer"
-#   }
-# }
-
-# provider "aws" {
-#   region = "us-east-1"  # Replace with your AWS region
-# }
-
-# provider "kubernetes" {
-#   host                   = "https://<KUBERNETES_API_SERVER>"
-#   token                  = "<KUBERNETES_TOKEN>"
-#   cluster_ca_certificate = file("<PATH_TO_CA_CERT>")
-# }
-
-# Replace <KUBERNETES_API_SERVER>, <KUBERNETES_TOKEN>, and <PATH_TO_CA_CERT> with the actual values from your kOps cluster. You can get these values from the kubeconfig file that kOps generates.
-
-# provider "helm" {
-#   kubernetes {
-#     host                   = "https://<KUBERNETES_API_SERVER>"
-#     token                  = "<KUBERNETES_TOKEN>"
-#     cluster_ca_certificate = file("<PATH_TO_CA_CERT>")
-#   }
-# }
-
-# resource "helm_release" "nginx_ingress" {
-#   name       = "nginx-ingress"
-#   repository = "https://kubernetes.github.io/ingress-nginx"
-#   chart      = "ingress-nginx"
-#   namespace  = "default"
-  
-#   set {
-#     name  = "controller.service.type"
-#     value = "LoadBalancer"
-#   }
+# output "nginx_ingress_url" {
+#   value = data.aws_lb.nginx_lb.dns_name
 # }
