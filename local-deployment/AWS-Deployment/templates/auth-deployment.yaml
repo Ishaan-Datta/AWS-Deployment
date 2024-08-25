@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: {{ .Values.authentication.appName }}
 spec:
-  replicas: {{ .Values.authentication.replicaCount }}
+  replicas: {{ .Values.deployment.replicaCount }}
   selector:
     matchLabels:
       app: {{ .Values.authentication.appName }}

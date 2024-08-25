@@ -52,3 +52,71 @@ Routing Traffic to Private Subnet Pods:
     Ingress and Backend Pods: The Ingress controller's LoadBalancer will receive external traffic and route it to the appropriate services (which might be in private subnets). The routing will work as long as the Kubernetes network policies and security groups allow traffic from the Ingress controller to the backend pods in the private subnet.
 
     Networking: Ensure that the VPC, subnet routing, and security groups are correctly configured to allow traffic flow from the public subnet (where the Ingress LoadBalancer is) to the private subnet (where backend services are).
+
+
+    Use the kOps Terraform module to generate the necessary security groups and deploy the Kubernetes cluster on the nodes.
+
+Configure kOps to use the existing network infrastructure: You can configure kOps to use the existing VPC, subnets, and other networking resources created by Terraform by specifying them in your cluster's configuration.
+
+Apply the kOps Terraform configuration: Finally, apply the kOps Terraform configuration using terraform apply. This will create the Kubernetes cluster, security groups, and other kOps-managed resources within the infrastructure you provisioned.
+
+This configuration ensures that the pod is only scheduled on nodes labeled as being in a private subnet.
+
+NAT Gateway per Subnet:
+You don't need a NAT gateway for each subnet, but it's a common practice to have one NAT gateway per Availability Zone (AZ) for high availability and redundancy. If you only have one NAT gateway in one AZ and that AZ fails, instances in other AZs won't have internet access if they rely on that NAT gateway. So, if your VPC spans multiple AZs, it's recommended to have a NAT gateway in each AZ to avoid a single point of failure.
+
+Definition: In a Kops cluster, utility subnets are public subnets that host shared resources required by the cluster, such as load balancers, NAT gateways, and bastion hosts.
+Purpose: Utility subnets are where Kops places resources that need public IPs or internet access. For example, if you have a LoadBalancer service in Kubernetes, the associated AWS load balancer will be placed in a utility subnet.
+
+Bastion Hosts: If you need to SSH into instances in private subnets, you might use a bastion host placed in a utility subnet to securely jump into private instances.
+
+Public Subnets (Utility Subnets): Used for placing resources that need internet access or are publicly accessible, such as NAT gateways and load balancers.
+Private Subnets: Where your application's backend services and databases are placed, ensuring they are not directly exposed to the internet. They use the NAT gateway in the utility subnet for outbound internet access.
+
+Kops will automatically map the master nodes to the private subnets and the utility (public) subnets to AWS resources like load balancers or NAT gateways.
+The worker nodes will also be placed in the private subnets by default, with access to the internet via the NAT gateway in the public subnet.
+
+Worker Nodes in Availability Zones: When you create a Kubernetes cluster using Kops, and specify subnets (both public and private) across multiple Availability Zones (AZs), Kops ensures that worker nodes are placed into the private subnets that correspond to the specific AZ they are part of.
+
+    Example: If you have a private subnet in us-east-1a, a worker node that is designated for us-east-1a will be placed in the private subnet within that AZ, not in a private subnet of another AZ like us-east-1b.
+
+SSH Access Process:
+
+    First, SSH into the bastion host using its public IP.
+    Then, from the bastion host, SSH into any of the master nodes using their private IPs within the VPC.
+
+kops places bastion host in public subnet for each az
+
+Kops will automatically configure security groups to allow SSH from the bastion host to the master nodes in the private subnets. The bastion host’s security group will permit SSH access from your local machine's IP range.
+
+utilize horizontal scaling, - adding more instances (nodes) to distribute the load across multiple machines.
+- **Use Case**: Ideal for stateless applications that can run on multiple nodes. It enhances fault tolerance, as even if one node fails, others can handle the load.
+- **Advantages**: More resilient and scalable than vertical scaling.
+
+Public vs. Private Subnets:
+
+    Public Subnet: This is a subnet that has a route to the internet, typically via an Internet Gateway (IGW). Resources in this subnet can be directly accessed from outside the VPC.
+    Private Subnet: This is a subnet without direct access to the internet. Resources in private subnets typically communicate with the outside world through a NAT Gateway or NAT instance, if needed.
+
+Use Case:
+
+    Load Balancer in Public Subnet: You want the load balancer to be accessible from the internet so that it can route external traffic to your services.
+    Worker Nodes in Private Subnet: You want the worker nodes, which run your application pods, to be in private subnets to keep them secure and not directly exposed to the internet.
+
+Create Public and Private Subnets:
+
+    Ensure you have both public and private subnets defined in your VPC. Public subnets should have a route to an Internet Gateway, while private subnets should route outbound traffic through a NAT Gateway or NAT instance.
+
+Configure Security Groups:
+
+    Load Balancer Security Group: This should allow inbound traffic from the internet (e.g., HTTP/HTTPS ports) and outbound traffic to the private subnet.
+    Worker Node Security Group: This should allow inbound traffic from the load balancer (typically on the ports your services are exposed on) and outbound traffic to the internet if necessary (e.g., for pulling container images).
+
+Private Subnets (Backend Services): Backend services, databases, and other internal services should run on worker nodes in private subnets to ensure they are not exposed to the public internet.
+Public Subnets (Load Balancers): Load balancers and services that need to be accessible from the public internet are typically configured in public subnets. While the load balancer itself is in a public subnet, the worker nodes running the actual application pods can still be in private subnets.
+
+Rolling Updates: When a new version of an application is deployed, Kubernetes will gradually replace the old Pods with new ones. This ensures minimal disruption and maintains application availability during the update process.
+
+using EC2 T3 instances for micro-services, low-latency interactive applications, small and medium databases, virtual desktops, development environments, code repositories, and business-critical applications
+
+waits 10 minutes

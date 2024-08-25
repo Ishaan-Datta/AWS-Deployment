@@ -49,3 +49,17 @@ kubectl get svc -n ingress-nginx
 map of configuration settings and what they change based on boolean logic
 
 In order to use gossip-based DNS, configure the cluster domain name to end with .k8s.local
+
+strongly recommended to use s3, otherwise will be stored in local directory
+ensure you have access to the corresponding private key and file system access is permitted
+
+terraform init
+terraform init -backend-config="bucket=my-terraform-state-bucket" \
+               -backend-config="key=prod/terraform.tfstate" \
+               -backend-config="region=us-east-2"
+terraform apply -auto-approve
+Before running terraform destroy, you should manually delete the kOps cluster by running:
+kops delete cluster --name your-cluster-name --state s3://your-kops-state-store --yes
+after waiting a couple of minutes, last line output should be: deleted cluster: (cluster name)
+terraform destroy
+	- yes

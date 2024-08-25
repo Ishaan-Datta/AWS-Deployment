@@ -1,6 +1,7 @@
 deployment:
   localTesting: false
   ingressEnabled: true
+  replicaCount: 1
 
 frontend:
   logLevel: debug

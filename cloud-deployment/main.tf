@@ -1,99 +1,177 @@
 terraform {
-  backend "s3" {
-    bucket = "tf-state-blog" # replace
-    key    = "dev/terraform"
-    region = "eu-west-2"
+  required_providers {
+    aws = {
+      version = "4.67.0"
+    }
   }
+}
+
+provider "aws" {
+  alias = "aws-region-provider"
+  region = "ca-central-1"
+}
+
+provider "kubernetes" {
+    config_path = "~/.kube/config"
+}
+
+provider "helm" {
+  kubernetes {
+    config_path = "~/.kube/config"
+  }
+}
+
+data "aws_regions" "available" {}
+
+variable "aws_region" {
+  description = "The AWS region in which to deploy the resources"
+  type    = string
+  default = "us-east-2"
+  
+  validation {
+    condition     = contains(data.aws_regions.available.names, var.aws_region)
+    error_message = "Invalid AWS region. Please provide a valid AWS region from the available regions."
+  }
+}
+
+variable "az_count" {
+  description = "The number of availability zones to use (1-5)"
+  type    = number
+  default = 3
+
+  validation {
+    condition     = var.az_count >= 1 && var.az_count <= 5
+    error_message = "The number of AZs must be between 1 and 5."
+  }
+}
+
+variable "use_ingress_controller" {
+  description = "Toggle to use Ingress Controller (true) or Direct Load Balancer (false)"
+  type        = bool
+  default     = false
+}
+
+variable "environment" {
+  description = "The name of the Terraform environment to create resources under"
+  type    = string
+  default = "dev"
+}
+
+variable "namespace" {
+  description = "The namespace to deploy the Helm chart to"
+  type    = string
+  default = "AWS-Deployment"
+}
+
+variable "deployment_name" {
+  description = "The name of the deployment"
+  type    = string
+  default = "AWS-Deployment"
+}
+
+variable "vpc_name" {
+  description = "The name of the VPC"
+  type   = string
+  default = "vpc-dev"
+}
+
+variable "ssh_key_path" {
+  description = "The path to the SSH public key to be used for the bastion hosts"
+  type    = string
+  default = "~/.ssh/id_rsa.pub"
 }
 
 data "aws_availability_zones" "available" {
   state = "available"
 }
 
-variable "az_count" {
-  type = number
-  default = 3
+resource "random_string" "random" {
+  length  = 16
+  lower   = true
+  upper   = false
+  special = false
+  numeric = false
 }
 
 locals { 
-  azs =  slice(data.aws_availability_zones.available.names, 0, 3)
-  environment = "dev"
-  kops_state_bucket_name = "${random_string.random.result}-kops-bucket"
-  kubernetes_cluster_name = "kops-cluster-${random_string.random.result}.k8s.local"
-  vpc_name = "idfk"
-  # need to keep ingress ips?
-
+  azs =  slice(data.aws_availability_zones.available.names, 0, var.az_count)
+  environment = "${var.environment}"
+  kops_cluster_name = "kops-cluster-${random_string.random.result}.k8s.local"
+  kops_state_store_name = "${random_string.random.result}-kops-bucket"
+  kops_state_store = "s3://${locals.kops_state_store_name}"
   tags = {
     terraform = true
-    environment = "dev"
+    environment = "${var.environment}"
   }
+  public_subnet_cidrs  = [for i in range(var.az_count) : cidrsubnet("10.0.0.0/16", 8, i)]
+  private_subnet_cidrs = [for i in range(var.az_count) : cidrsubnet("10.0.0.0/16", 8, i + var.az_count)]
 }
 
-module "vpc" {
-  source = "terraform-aws-modules/vpc/aws"
-  version = "1.46.0"
-  name = "${local.vpc_name}"
-  cidr = "10.0.0.0/16"
-  azs                = ["${local.azs}"]
-  private_subnets    = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"] # use generation
-  public_subnets     = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"] # use generation
-  enable_nat_gateway = true
-#   enable_dns_support = true
-#   enable_dns_hostnames = true
-
-  private_subnet_tags = {
-    "kubernetes.io/cluster/${local.kubernetes_cluster_name}" = "owned"
-    "kubernetes.io/role/elb" = "1"
-  }
-
-    tags = {
-    "kubernetes.io/cluster/${local.kubernetes_cluster_name}" = "shared"
-    "terraform"                                              = true
-    "environment"                                            = "${local.environment}"
-  }
-
-  public_subnet_tags = {
-    "kubernetes.io/cluster/${local.kubernetes_cluster_name}" = "owned"
-    "kubernetes.io/role/elb" = true
-  }
-}
-
-# VPC
 resource "aws_vpc" "main_vpc" {
   cidr_block = "10.0.0.0/16"
   enable_dns_support = true
   enable_dns_hostnames = true
+
+  tags = merge(local.tags, {
+    Name = "${var.vpc_name}"
+  })
 }
 
 resource "aws_subnet" "public_subnet" {
-  count = 2
-  vpc_id = aws_vpc.k8s_vpc.id
-  cidr_block = cidrsubnet(aws_vpc.k8s_vpc.cidr_block, 8, count.index)
-  availability_zone = element(data.aws_availability_zones.available.names, count.index)
+  count = var.az_count
+  vpc_id = aws_vpc.main_vpc.id
+  cidr_block = local.public_subnet_cidrs[count.index]
+  availability_zone = element(local.azs, count.index)
   map_public_ip_on_launch = true
+
+  tags = merge(local.tags, {
+    Name = "${var.vpc_name}-public-subnet-${count.index + 1}" 
+    "kubernetes.io/cluster/${local.kops_cluster_name}" = "owned"
+    "kubernetes.io/role/elb" = true
+    kops.k8s.io/role = "utility"
+  })
 }
 
-resource "aws_subnet" "public_subnet_1" {
+resource "aws_subnet" "private_subnet" {
+  count = var.az_count
+
   vpc_id            = aws_vpc.main_vpc.id
-  cidr_block        = "10.0.1.0/24" # public subnet number two is 10.0.2.0/24
-# private subnet would be 10.0.3.0/24
-  availability_zone = "us-west-2a"
-  map_public_ip_on_launch = true
+  cidr_block        = local.private_subnet_cidrs[count.index]
+  availability_zone = element(local.azs, count.index)
+
+  tags = merge(local.tags, {
+    "Name"                                       = "${vpc_name}-private-subnet-${count.index + 1}"
+    "kubernetes.io/cluster/${local.kops_cluster_name}" = "owned"
+    kops.k8s.io/role = "node"
+  })
 }
 
 # Internet Gateway
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main_vpc.id
+  tags = merge(local.tags, {
+    Name = "${vpc_name}-igw"
+  })
 }
 
-# NAT Gateway
+# NAT EIP
 resource "aws_eip" "nat_eip" {
-  vpc = true
+  count = var.az_count
+  tags = merge(local.tags, {
+    Name = "${vpc_name}-nat-eip-${count.index + 1}"
+  })
 }
 
+# NAT gateway
 resource "aws_nat_gateway" "nat_gw" {
-  allocation_id = aws_eip.nat_eip.id
-  subnet_id     = aws_subnet.public_subnet_1.id
+  count = var.az_count
+
+  allocation_id = aws_eip.nat_eip[count.index].id
+  subnet_id     = aws_subnet.public_subnet[count.index].id
+
+  tags = merge(local.tags, {
+    Name = "${vpc_name}-nat-gw-${count.index + 1}"
+  })
 }
 
 # Route Tables
@@ -104,10 +182,16 @@ resource "aws_route_table" "public_rt" {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.igw.id
   }
+
+  tags = merge(local.tags, {
+    Name = "${vpc_name}-public-rt"
+  })
 }
 
-resource "aws_route_table_association" "public_rt_assoc_1" {
-  subnet_id      = aws_subnet.public_subnet_1.id
+resource "aws_route_table_association" "public_rt_assoc" {
+  count = var.az_count
+
+  subnet_id      = aws_subnet.public_subnet[count.index].id
   route_table_id = aws_route_table.public_rt.id
 }
 
@@ -119,9 +203,16 @@ resource "aws_route_table" "private_rt" {
     nat_gateway_id = aws_nat_gateway.nat_gw.id
   }
 
-  tags = {
-    Name = "private_rt"
-  }
+  tags = merge(local.tags, {
+    Name = "${vpc_name}-private-rt"
+  })
+}
+
+resource "aws_route_table_association" "private_rt_assoc" {
+  count = var.az_count
+
+  subnet_id      = aws_subnet.private_subnet[count.index].id
+  route_table_id = aws_route_table.private_rt.id
 }
 
 resource "aws_security_group" "k8s_sg" {
@@ -141,20 +232,48 @@ resource "aws_security_group" "k8s_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name = "k8s_sg"
-  }
+  tags = merge(local.tags, {
+    Name = "${vpc_name}-k8s-sg"
+  })
 }
 
 # Create S3 Bucket for Kops state storage need to turn on versioning
 resource "aws_s3_bucket" "kops_state_store" {
-  bucket = "${local.kops_state_bucket_name}"
-  acl    = "private"
+  provider = aws.aws-region-provider
+  bucket   = locals.kops_state_store_name
   force_destroy = true
-  tags = "${merge(local.tags)}"
+  tags = local.tags
 }
 
-# IAM Role for Kops cluster management
+resource "aws_s3_bucket_public_access_block" "example" {
+  provider = aws.aws-region-provider
+  bucket   = aws_s3_bucket.kops_state_store.id
+
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+
+resource "aws_s3_bucket_ownership_controls" "example" {
+  provider = aws.aws-region-provider
+  bucket   = aws_s3_bucket.kops_state_store.id
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
+resource "aws_s3_bucket_acl" "example" {
+  provider = aws.aws-region-provider
+  depends_on = [
+    aws_s3_bucket_public_access_block.example,
+    aws_s3_bucket_ownership_controls.example,
+  ]
+
+  bucket = aws_s3_bucket.kops_state_store.id
+  acl    = "public-read"
+}
+
 resource "aws_iam_role" "kops_role" {
   name = "kops-role"
   assume_role_policy = jsonencode({
@@ -180,36 +299,48 @@ resource "null_resource" "kops_cluster" {
   provisioner "local-exec" {
     command = <<EOT
       kops create cluster \
-        --name=${var.kops_cluster_name} \
-        --state=${var.kops_state_store} \
-        --zones=${var.aws_zones} \
-        --node-count=1 \
-        --node-size=t3.medium \
-        --master-size=t3.medium \
+        --name=${local.kops_cluster_name} \
+        --state=${local.kops_state_store} \
+        --zones=${local.azs} \
+        --networking=kuberouter \
         --vpc=${aws_vpc.main_vpc.id} \
-        --subnets=${aws_subnet.private_subnet_1.id},${aws_subnet.private_subnet_2.id} \
-        --out=kops-terraform/
-      
-      kops update cluster --name=mycluster.k8s.local --yes
-      kops export kubecfg --name=mycluster.k8s.local
+        --subnets=${join(",", aws_subnet.private_subnet.*.id)} \
+        --utility-subnets=${join(",", aws_subnet.public_subnet.*.id)} \
+        --topology=private \
+        --bastion \
+        --ssh-public-key=${ssh_key_path} \
+        --node-count=1 \
+        --node-size=t3.small \ 
+        --master-size=t3.medium \
+      kops update cluster --name=${local.kops_cluster_name} --yes --state=${local.kops_state_store} --admin
+      kops validate cluster --name=${local.kops_cluster_name} --state=${local.kops_state_store} --wait 10m
+      kops export kubecfg --admin --name=${local.kops_cluster_name} --state=${local.kops_state_store}
     EOT
   }
 
-  triggers = {
-    cluster_update = "${timestamp()}"
+  depends_on = [
+    aws_vpc.main_vpc,
+    aws_subnet.public,
+    aws_subnet.private,
+    aws_s3_bucket.kops_state_store
+  ]
+}
+
+resource "kubernetes_namespace" "my_namespace" {
+  metadata {
+    name = "${var.namespace}"
   }
 
-  depends_on = [aws_vpc.main_vpc]
+  depends_on = [null_resource.kops_cluster]
 }
 
 resource "helm_release" "nginx_ingress" {
-  # conditionally deploying ingress helm chart if use_ingress_controller is true
   count     = var.use_ingress_controller ? 1 : 0
 
   name       = "nginx-ingress"
   repository = "https://kubernetes.github.io/ingress-nginx/"
   chart      = "ingress-nginx"
-  namespace  = "ingress-nginx"
+  namespace  = "${var.namespace}"
 
   set {
     name  = "controller.service.type"
@@ -225,18 +356,33 @@ resource "helm_release" "nginx_ingress" {
     name = "controller.service.annotations.service.beta.kubernetes.io/aws-load-balancer-type"
     value = "classic"
   }
+
+  depends_on = [ null_resource.kops_cluster ]
 }
 
 # populate from helm.sh repo
 resource "helm_release" "helm_deployment" {
-  name       = "helm_deployment"
+  name       = "${var.deployment_name}"
   repository = "https://example.com/charts"
   chart      = "backend-app"
-  namespace  = "default"
+  namespace  = "${var.namespace}"
 
-  values = [
-    file("backend-values.yaml")
-  ]
+  set {
+    name = "deployment.ingressEnabled"
+    value = false
+  }
+
+  set {
+    name = "deployment.localTesting"
+    value = false
+  }
+
+  set {
+    name = "deployment.replicaCount"
+    value = "${var.az_count}"
+  }
+
+  depends_on = [ null_resource.kops_cluster ]
 }
 
 resource "null_resource" "wait_for_lb" {
@@ -247,12 +393,62 @@ resource "null_resource" "wait_for_lb" {
   depends_on = [helm_release.helm_deployment]
 }
 
-// Filtering by Tags: If the LoadBalancer name is not unique, you can filter by tags that Kubernetes typically applies to the LoadBalancer, such as kubernetes.io/service-name.
+resource "null_resource" "fetch_elb_urls" {
+  provisioner "local-exec" {
+    command = <<EOT
+      NAMESPACE="${var.namespace}"
+      
+      # Fetch the LoadBalancer services in the specified namespace
+      kubectl get services -n $NAMESPACE -o json | jq -r '
+      .items[] | select(.spec.type == "LoadBalancer") | 
+      "\(.metadata.name) - \(.status.loadBalancer.ingress[] | .hostname // .ip)"' > elb_urls.txt
+      
+      # Output the first result
+      head -n 1 elb_urls.txt
+    EOT
+  }
+}
 
-# data "aws_lb" "nginx_lb" {
-#   name = helm_release.nginx_ingress.name
-# }
+output "cluster_name" {
+  value = locals.kops_cluster_name
+}
 
-# output "nginx_ingress_url" {
-#   value = data.aws_lb.nginx_lb.dns_name
-# }
+output "kops_state_store_name" {
+  value = locals.kops_state_store_name
+}
+
+output "kops_state_store_bucket" {
+  value = locals.kops_state_store
+}
+
+output "vpc_id" {
+  value = aws_vpc.main_vpc.id
+}
+
+output "public_subnets_ids" {
+  value = aws_subnet.public_subnet[*].id
+}
+
+output "public_subnets_cidr_blocks" {
+  value = locals.public_subnets_cidrs
+}
+
+output "private_subnets_ids" {
+  value = aws_subnet.private_subnet[*].id
+}
+
+output "public_subnets_cidr_blocks" {
+  value = locals.private_subnets_cidrs
+}
+
+output "availability_zones" {
+  value = locals.azs
+}
+
+output "environment" {
+  value = locals.environment
+}
+
+output "namespace" {
+  value = vars.namespace
+}
