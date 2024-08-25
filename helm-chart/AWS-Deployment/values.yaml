@@ -2,6 +2,7 @@ deployment:
   localTesting: false
   ingressEnabled: true
   replicaCount: 1
+  awsRegion: "ca-central-1"
 
 frontend:
   logLevel: debug
@@ -48,17 +49,12 @@ userdatabase:
   appName: data
   image:
     repository: ishaandatta/aws-deployment
-    local_tag: ldata
-    cloud_tag: cdata
+    tag: data
     pullPolicy: Always
     port: 8083
   service:
     type: ClusterIP
     port: 8083
-  env:
-    DB_USERNAME: ""
-    DB_PASSWORD: ""
-    DB_URL: ""
 
 resources: 
   limits:

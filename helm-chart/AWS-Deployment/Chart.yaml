@@ -1,0 +1,6 @@
+apiVersion: v2
+name: AWS-Deployment
+description: A Helm chart for deploying a microservice architecture web application on a Kubernetes Cluster hosted on AWS
+appVersion: "1.0"
+version: 0.1.0
+type: application

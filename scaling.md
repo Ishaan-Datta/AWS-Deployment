@@ -120,3 +120,42 @@ Rolling Updates: When a new version of an application is deployed, Kubernetes wi
 using EC2 T3 instances for micro-services, low-latency interactive applications, small and medium databases, virtual desktops, development environments, code repositories, and business-critical applications
 
 waits 10 minutes
+
+This Terraform-based infrastructure setup provisions a Kubernetes cluster on AWS using kOps and is designed to efficiently balance security, scalability, and cost-effectiveness. The cluster is initially configured with two nodes, scalable between one and three nodes, supporting horizontal scaling for increased resilience and load distribution. The architecture employs a private network topology, placing backend services like databases and internal APIs in private subnets, while frontend services, including load balancers, reside in public subnets for internet accessibility. Communication between these components is secured and managed via correctly configured VPC routing tables and security groups.
+
+Gossip DNS is utilized for internal DNS resolution within the cluster, negating the need for external DNS services like Route 53, making it ideal for development or testing environments. Key network resources, including NAT gateways for private subnets and Internet Gateways for public subnets, are automatically provisioned by kOps, ensuring secure and efficient internet access without exposing internal instances directly to the internet. Additionally, a bastion host is placed in public subnets to facilitate secure SSH access to instances in private subnets.
+
+Terraform is employed to orchestrate the creation of the underlying network infrastructure, including VPCs, subnets, routing tables, and security groups, which are then leveraged by kOps for deploying and managing the Kubernetes cluster. This infrastructure supports rolling updates to minimize downtime during deployments and ensures that worker nodes are placed in private subnets within their respective Availability Zones for high availability. Overall, this setup offers a robust and flexible foundation for running secure, scalable applications on AWS.
+
+Infrastructure Summary
+
+This Terraform-based setup provisions a secure and scalable Kubernetes cluster on AWS using kOps, balancing performance and cost-efficiency. The architecture features a mix of public and private subnets to securely host frontend and backend services, while leveraging horizontal scaling for resilience. Key components like Gossip DNS, NAT gateways, and bastion hosts are strategically implemented to ensure internal DNS resolution, secure internet access, and controlled administrative access to the cluster.
+Key Elements and Descriptions
+
+    VPC (Virtual Private Cloud): A virtual network dedicated to your AWS account that isolates and secures your cloud resources. Configured with both public and private subnets to segregate internet-facing and internal services.
+
+    Public Subnets: Subnets with routes to the Internet Gateway (IGW) that host resources like load balancers, ensuring they are accessible from the internet.
+
+    Private Subnets: Subnets without direct internet access, used to host backend services and databases. These subnets communicate with the internet through NAT gateways for security.
+
+    Internet Gateway (IGW): Enables internet access for resources in public subnets, allowing them to interact with external services.
+
+    NAT Gateway: Provides outbound internet access for resources in private subnets, enabling tasks like pulling updates or external API calls while blocking inbound traffic.
+
+    Gossip DNS: A peer-to-peer DNS system used within the cluster for internal name resolution, eliminating the need for external DNS services like Route 53, particularly useful in private subnet configurations.
+
+    Load Balancer: Deployed in public subnets to route external traffic to backend services, with security groups configured to manage access.
+
+    Bastion Host: A secure jump server placed in a public subnet to facilitate SSH access to instances within private subnets, protected by security group rules.
+
+    Security Groups: Act as virtual firewalls controlling inbound and outbound traffic for cluster components, ensuring secure communication between services.
+
+    Terraform: Used to define and manage the entire infrastructure, from VPCs to security groups, allowing for version-controlled, repeatable deployments.
+
+    kOps: Automates the provisioning and management of Kubernetes clusters on AWS, handling tasks like creating EC2 instances, configuring networking, and deploying the Kubernetes control plane.
+
+    Rolling Updates: Kubernetes feature that gradually replaces old Pods with new ones during updates, ensuring continuous availability and minimal disruption to services.
+
+    Horizontal Scaling: Allows the cluster to dynamically adjust the number of nodes based on workload, enhancing resilience and load distribution.
+
+

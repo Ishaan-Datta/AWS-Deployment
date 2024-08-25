@@ -15,18 +15,6 @@ Conditional Logic Section
 {{- end }}
 
 {{/*
-Change bottom to .cloud_tag when done testing
-*/}}
-
-{{- define "AWS-Deployment-Chart.userdbImage" }}
-{{- if .Values.deployment.localTesting }}
-        image: "{{ .Values.userdatabase.image.repository }}:{{ .Values.userdatabase.image.local_tag }}"
-{{- else }}
-        image: "{{ .Values.userdatabase.image.repository }}:{{ .Values.userdatabase.image.local_tag }}"
-{{- end }}
-{{- end }}
-
-{{/*
 Expand the name of the chart.
 */}}
 {{- define "AWS-Deployment-Chart.name" -}}
@@ -88,4 +76,3 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
-

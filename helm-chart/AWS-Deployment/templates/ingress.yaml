@@ -11,7 +11,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: "*.ca-central-1.elb.amazonaws.com"
+    - host: "*.${.Values.deployment.awsRegion}.elb.amazonaws.com"
       http:
         paths:
           - path: /auth(/|$)(.*)

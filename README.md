@@ -4,6 +4,8 @@
 
 what it does 
 
+golang components for extremely lightweight demonstration of microservice web application architecture
+
 links for other instruction pages
 [home](README.md)
 
@@ -58,7 +60,30 @@ See the [live cloud deployment](deployment.md) guide for detailed instructions o
 	- kops can autoscale as well: The worker nodes will be part of an autoscaling group. Autoscaling will be managed by cluster-autoscaler.
 
 
-    - Modifying the file to handle autoscaling 
+- Modifying the file to handle autoscaling 
 - HTTPS certificate generation using traefik
 - Utilizing EC2 spot instances with persisting states
 - Implementing monitoring and logging for real-time cluster performance tracking and centralized log management/error tracking
+
+
+please use full directory paths
+defaults for values...
+
+.
+├── network
+│   ├── main.tf
+│   ├── variables.tf
+│   └── outputs.tf
+├── s3
+│   ├── main.tf
+│   ├── variables.tf
+│   └── outputs.tf
+├── kops
+│   ├── main.tf
+│   ├── variables.tf
+│   └── outputs.tf
+├── helm
+│   ├── main.tf
+│   ├── variables.tf
+│   └── outputs.tf
+└── main.tf
