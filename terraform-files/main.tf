@@ -20,6 +20,7 @@ locals {
   public_subnet_cidr_blocks   = [for i in range(var.az_count) : cidrsubnet("10.0.0.0/16", 8, i)]
   private_subnet_cidr_blocks  = [for i in range(var.az_count) : cidrsubnet("10.0.0.0/16", 8, i + var.az_count)]
   helm_chart_path             = pathexpand("./helm-chart/AWS-Deployment")
+  az_count                    = length(local.azs)
   tags                        = {
     terraform                 = true
     environment               = "${var.environment_name}"
@@ -32,7 +33,7 @@ module "network" {
     aws                      = aws.aws-region-provider
   }
   vpc_cidr                   = "10.0.0.0/16"
-  az_count                   = var.az_count
+  az_count                   = local.az_count
   public_subnet_cidr_blocks  = local.public_subnet_cidr_blocks
   private_subnet_cidr_blocks = local.private_subnet_cidr_blocks
   azs                        = data.aws_availability_zones.available.names
@@ -77,7 +78,7 @@ module "helm" {
   use_ingress_controller = var.use_ingress_controller
   namespace              = var.namespace
   deployment_name        = var.deployment_name
-  az_count               = var.az_count
+  az_count               = local.az_count
   aws_region             = var.aws_region
   helm_chart_path        = local.helm_chart_path
   depends_on             = [module.kops]

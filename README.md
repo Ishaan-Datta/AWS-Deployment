@@ -1,42 +1,46 @@
 # AWS-Deployment
 
 ## Application Overview:
-
 This application demonstrates a microservice web architecture using Golang components. The application consists of four microservices: an authentication service, a data service, a recommendation service and a frontend/web service. The application is designed to be extremely lightweight, scalable, and easy to deploy on Kubernetes, making it ideal for cloud-native environments. You can view the application code Docker containers in the docker-container folder.
 
 ## Why use it? 
+If you're a developer looking to deploy a microservice-based application on Kubernetes, this application is a perfect match. One of the standout features is how easy it is to get started. The installation process is straightforward, thanks to the use of Kubernetes, Terraform, and Helm. These tools work seamlessly together to provide a lightweight and scalable solution that's ready for cloud-native environments. With just a few simple steps, you can have everything up and running on AWS, allowing you to focus more on coding and less on setup.
 
-This setup is ideal for developers looking to deploy a microservice-based application on Kubernetes. The application is designed to be lightweight, scalable, and easy to deploy, making it ideal for cloud-native environments. The use of Kubernetes, Terraform, and Helm provides a robust and flexible foundation for running secure, scalable applications on AWS.
+After installing the necessary tools, configuring and deploying the application to suit your specific needs is a breeze. The provided Helm chart does most of the heavy lifting by defining, installing, and managing all the Kubernetes resources required. Whether you're setting up the frontend, authentication, or data services, everything is templated for easy customization. You can also tweak AWS regions, adjust dynamic availability zone settings, and separate environments with ease. The application follows the best practices for cloud resource management, including environment separation and resource tagging, and can easily be accessed through the public URL allowing you to test and validate the deployment fast.
 
-After installing the necessary tools, you can deploy the application to AWS using Terraform and Helm. The deployment process is straightforward and can be customized to suit your specific requirements. The application can be accessed through a public URL or an Ingress controller, allowing you to test the deployment and validate the setup.
-
-Deployment is a breeze with the provided Helm chart, which defines, installs, and manages the Kubernetes resources required for the application in a single step. The chart includes templates for deploying the frontend, authentication, data, and recommendation pods and services, making it extremely easy to customize the deployment configuration.
-
-Not to mention configuration...
-
-This infrastructure supports rolling updates to minimize downtime during deployments and ensures that worker nodes are placed in private subnets within their respective Availability Zones for high availability. Overall, this setup offers a robust and flexible foundation for running secure, scalable applications on AWS.
-
-High availability:
-subnet per AZ, node per AZ, etc.
-horizontal scaling support
+Finally, the application is built with high availability in mind, making it a reliable choice for production environments. The infrastructure is designed to support rolling updates, minimizing downtime and ensuring that your application remains accessible. With worker nodes strategically placed across multiple private subnets and Availability Zones, your application benefits from horizontal scaling and redundancy. This setup ensures that even during high traffic or unexpected failures, your application remains robust and responsive.
 
 ### Installation/Deployment:
-
 After cloning the repository, follow the instructions below to deploy the application to AWS using Terraform and Helm:
 
-* Try the [local installation guide](installation.md) first to test out the application on your local machine
+* Try the [local installation guide](assets/installation.md) first to test out the application on your local machine
 
-* Try the [cloud deployment guide](deployment.md) for detailed instructions on deploying the application to AWS
+* Try the [cloud deployment guide](assets/deployment.md) for detailed instructions on deploying the application to AWS
 
-## Future Improvements
-- hardening: 
-	- internal load balancing
-	- Cluster Autoscaler: curl -O https://raw.githubusercontent.com/kubernetes/autoscaler/master/cluster-autoscaler/cloudprovider/aws/examples/cluster-autoscaler-one-asg.yaml
-	- kops can autoscale as well: The worker nodes will be part of an autoscaling group. Autoscaling will be managed by cluster-autoscaler
-- Modifying the file to handle autoscaling 
-- HTTPS certificate generation using traefik TLS
-- Utilizing EC2 spot instances with persisting states
-- Implementing monitoring and logging for real-time cluster performance tracking and centralized log management/error tracking
+## Future Improvements:
+
+### [Internal Load Balancing](https://kubernetes.io/docs/concepts/services-networking/service/#internal-load-balancer)
+While the Nginx ingress controller has some limited internal load balancing capabilities, it is not designed for high-performance in large scale scenarios. A separate internal load balancer can be provisioned within the VPC to route traffic between the microservices within the cluster. This can help improve the performance and reliability of the application by distributing the load evenly across the services.
+
+### [External DNS Management](https://github.com/kubernetes-sigs/external-dns)
+Using an external DNS tool allows automatic management of DNS records for services like the internet-facing loadbalancer to use a consistent fully qualifieid domain name (FQDN) from Route53 instead of one randomly generated by AWS, which can be useful for production deployments. This also enables kOps to be more closely integrated with the domain name provider, which can help with multi-cluster deployments across regions and DNS management.
+
+### Other Traffic Distribution Methods
+Some concepts I would like to explore further to optimize the networking configuration for larger scale deployments include:
+- [Topology Aware Routing](https://kubernetes.io/docs/concepts/services-networking/topology-aware-routing/#enabling-topology-aware-routing): This feature allows the cluster to route traffic based on the location of the client, which can help reduce latency and improve performance for geographically distributed applications.
+- [Service Internal Traffic](https://kubernetes.io/docs/concepts/services-networking/service-traffic-policy/#using-service-internal-traffic-policy): This feature allows for more control over the routing and security of internal traffic within the cluster.
+
+### [Cluster Autoscaler](https://kubernetes.io/docs/concepts/cluster-administration/cluster-autoscaling/)
+Currently the Kubernetes cluster handles autoscaling by increasing the number of pod Replica Sets based on the resource requirements. The cluster autoscaler should also be enabled to automatically adjust the size of the cluster by adding/removing nodes based on the resource requirements of the pods. This can help optimize the cluster utilization and reduce costs by scaling down the cluster during periods of low demand and scaling up during peak traffic.
+
+### [HTTPS Certificate Generation](https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/)
+A better approach for production usage would be to use a certificate authority like Let's Encrypt to generate SSL certificates, and swap the ingress controller from Nginx to Traefik to enable TLS termination. This enable HTTPS for the application and ensures secure communication between the client and the server.
+
+### [EC2 Spot Instances](https://aws.amazon.com/tutorials/run-kops-kubernetes-clusters-for-less-with-amazon-ec2-spot-instances/)
+A combination of EC2 spot instances and persistent volume claims can be used to store data on the worker nodes and retain similar functionality to the EC2 on-demand instances that are used currently in the project. This requires templating the instance groups generated by kOps to change the node type and add node termination handling, but will be more cost effective in the long run.
+
+### [Monitoring and Logging](https://www.youtube.com/watch?v=hJoH7J0un5U&t=1s)
+Implementing monitoring and logging for real-time cluster performance tracking and centralized log management/error tracking can help in identifying and resolving issues quickly. Helm charts will be added soon to enable the deployment of monitoring and logging tools like Prometheus, Grafana, ELK stack, and Fluentd to the cluster, which will all be configured to collect metrics from the application's cluster resources.
 
 ## Implementation Details:
 
@@ -63,25 +67,18 @@ AWS-Deployment
 #### **Load Balancer**:
 When deploying on the cloud, an external load balancer is created to route traffic to either the frontend service or the ingress controller based on the configuration passed, which then routes the traffic to the appropriate service based on the hostname. 
 
-If your architecture only requires external traffic to be directed to the front-end service, and internal services are meant to stay internal (only accessible within the cluster or VPC), you can simplify your setup by using The external load balancer allows inbound traffic on the necessary ports (e.g., port 80 for HTTP or port 443 for HTTPS) and will route traffic directly to the front-end service, which will then handle the internal routing to the other services. 
+When your architecture only requires external traffic to be directed to the front-end service, and internal services are meant to stay internal (only accessible within the cluster or VPC), the external load balancer allows inbound traffic on port 80 (for HTTP) and will route traffic directly to the front-end service, which will then handle the internal routing to the other services:
+
+![load balancer diagram](assets/LoadBalancer.png)
 
 #### **Ingress Controller**:
 Normally these services are not exposed to the public internet, but an ingress controller can be enabled to allows for easy testing and validation of the application before going live by routing external traffic to the services for testing the internal endpoints. In the provided Kubernetes manifests, the Ingress resource uses a fanout configuration that maps incoming requests by their endpoint to the corresponding services. This set allows you to keep the number of load balancers down to a minimum:
 
-![fanout diagram](Fanout.jpg)
+![fanout diagram](assets/Ingress.png)
 
 
 #### **Horizontal Scaling**:
 The chart makes use of ReplicaSets to ensure high availability and scalability of the application. By default, the chart deploys three replicas of each service to ensure that the application can handle increased traffic and load. The ReplicaSets are configured with liveness probes to help with startup and container running states, ensuring that the application is always available and responsive.
-
-#### **Annotations**:
-The Ingress controller is configured with annotations to enable path-based routing and rewriting. The annotations specify how to rewrite the request path and enable the use of regex in the path field, allowing for more flexible path matching and rewriting. The annotations are used to define the path definitions and rewrite targets for the Ingress controller, ensuring that incoming requests are routed to the correct services based on the request path.
-
-Regex Path Definitions:
-- `path: /auth(/|$)(.*)`: Matches `/auth`, `/auth/`, and any path starting with `/auth/`. The `(.*)` captures the remaining part of the path after `/auth/`.
-
-Rewrite Targets:
-- `nginx.ingress.kubernetes.io/rewrite-target: /$2`: This annotation specifies how to rewrite the request path. The `$2` captures the part of the path after the prefix. For example, `www.coolwebsite.com/auth/version` would be rewritten to `www.coolwebsite.com/version`.
 
 ### Terraform Infrastructure:
 Terraform is employed to provision creation of the underlying network infrastructure, including VPCs, subnets, routing tables, IGWs, NAT gateways, which are then leveraged by kOps for deploying and managing the Kubernetes cluster. The Terraform configuration is modularized into separate directories for each component, making it easy to manage and update the infrastructure as needed.
@@ -109,9 +106,9 @@ Terraform is employed to provision creation of the underlying network infrastruc
 └── outputs.tf
 ```
 
-#### **Network Configuration**:
+#### **Network Architecture**:
 
-The network configuration makes heavy use of Terraform modules to dynamically generate and distribute resources such as subnets, NAT gateways and node isntance groups across availability zones to ensure high availability of the application. The network configuration is designed to be modular and scalable, allowing for easy customization and expansion as needed, enabling upto 5 availability zones to be specified for the deployment. To maintain a private network topology for security the following network resources are provisioned:
+The network architecture makes heavy use of Terraform modules to dynamically generate and distribute resources such as subnets, NAT gateways and node isntance groups across availability zones to ensure high availability of the application. The network configuration is designed to be modular and scalable, allowing for easy customization and expansion as needed, enabling upto 5 availability zones to be specified for the deployment. To maintain a private network topology for security the following network resources are provisioned:
 - VPC (Virtual Private Cloud): Configured with both public and private subnets to segregate internet-facing and internal services.
 - Public Subnets: Subnets with routes to the Internet Gateway (IGW) that host resources like Load balancers and services that need to be accessible from the public internet are typically configured in public subnets.
 - Private Subnets: Isolates backend microservices from public internet, adding a layer of security by strictly allowing access by resources within the VPC such as the loadbalancer in the public subnet or outbound traffic through controlled access points like NAT gateways.

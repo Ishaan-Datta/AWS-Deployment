@@ -98,7 +98,15 @@ terraform apply -var="aws_region=ca-central-1" \
 
 3. After the deployment is complete, you will see the output with the Kubernetes cluster details.
 
-## Step 8: Cleaning Up:
+## Step 8: Deployment Health Check
+1. Since your kubectl config has already been configured by kOps try some commands:
+
+```bash
+kubectl get nodes -n (your namespace)
+kubectl get pods -n (your namespace)
+```
+
+## Step 9: Cleaning Up
 
 1. Before running terraform destroy, you should manually delete the kOps cluster by running:
 
