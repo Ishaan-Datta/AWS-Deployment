@@ -11,7 +11,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: "*.${.Values.deployment.awsRegion}.elb.amazonaws.com"
+    {{- template "AWS-Deployment-Chart.hostname" . }}
       http:
         paths:
           - path: /auth(/|$)(.*)

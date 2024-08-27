@@ -37,3 +37,15 @@ output "network_private_subnet_ids" {
 output "network_vpc_id" {
   value = module.network.vpc_id
 }
+
+output "bastion_public_ips" {
+  value = module.kops.bastion_public_ips
+}
+
+output "elb_url" {
+  value = module.helm.elb_url
+}
+
+output "bastion_public_ips" {
+  value = var.enable_bastion ? module.child.bastion_host_ips : []
+}

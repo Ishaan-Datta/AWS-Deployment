@@ -63,6 +63,7 @@ module "kops" {
   public_subnet_ids  = module.network.public_subnet_ids
   ssh_key_path       = var.ssh_key_path
   availability_zones = data.aws_availability_zones.available.names
+  enable_bastion     = var.enable_bastion
   tags               = local.tags
   depends_on         = [ module.s3 ]
 }

@@ -55,19 +55,21 @@ resource "null_resource" "wait_for_lb" {
   depends_on = [helm_release.helm_deployment]
 }
 
-resource "null_resource" "fetch_elb_urls" {
+resource "null_resource" "fetch_loadbalancer_url" {
   provisioner "local-exec" {
     command = <<EOT
-      NAMESPACE="${var.namespace}"
-      
-      # Fetch the LoadBalancer services in the specified namespace
-      kubectl get services -n $NAMESPACE -o json | jq -r '
-      .items[] | select(.spec.type == "LoadBalancer") | 
-      "\(.metadata.name) - \(.status.loadBalancer.ingress[] | .hostname // .ip)"' > elb_urls.txt
-      
-      # Output the first result
-      head -n 1 elb_urls.txt
+      if [ "${var.use_ingress_controller}" = "true" ]; then
+        kubectl get services \
+          --namespace ${var.namespace} \
+          ingress-nginx-controller \
+          --output jsonpath='{.status.loadBalancer.ingress[0].hostname}' > service_ip.txt
+      else
+        kubectl get services \
+          --namespace ${var.namespace} \
+          web \
+          --output jsonpath='{.status.loadBalancer.ingress[0].hostname}' > service_ip.txt
+      fi
     EOT
   }
-  depends_on = [ null_resource.wait_for_lb ]
+  depends_on = [module.kubernetes_service]
 }

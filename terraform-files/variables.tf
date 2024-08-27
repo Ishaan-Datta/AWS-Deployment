@@ -59,3 +59,9 @@ variable "config_path" {
   type        = string
   default     = pathexpand("~/.kube/config")
 }
+
+variable "enable_bastion" {
+  description = "Whether to enable the bastion host"
+  type        = bool
+  default     = false
+}

@@ -37,3 +37,8 @@ variable "tags" {
   description = "The tags to apply to the resources"
   type        = map(string)
 }
+
+variable "enable_bastion" {
+  description = "Whether to enable the bastion host"
+  type        = bool
+}

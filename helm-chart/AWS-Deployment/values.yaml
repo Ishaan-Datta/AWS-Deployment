@@ -1,5 +1,5 @@
 deployment:
-  localTesting: false
+  localTesting: true
   ingressEnabled: true
   replicaCount: 1
   awsRegion: "ca-central-1"

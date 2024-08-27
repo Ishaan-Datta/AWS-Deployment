@@ -8,6 +8,7 @@ To learn more about the release, try:
   {{- if .Values.deployment.ingressEnabled }}
 
 For accessing all services through the Ingress controller, try:
+  $ kubectl get ing
   $ minikube tunnel
   $ curl --resolve "mylocaltestsite.local:80:127.0.0.1" -i http://mylocaltestsite.local/
   $ Available endpoints: /auth, /webapp, /recommend, /user-data
@@ -25,18 +26,4 @@ For only accessing the web application through the NodePort service, try:
 To uninstall: 
   $ helm uninstall {{ .Release.Name }}
   {{- end }}
-  
-{{- else }}
-  {{- if .Values.deployment.ingressEnabled }}
-
-For accessing all services through the Ingress controller, try:
-  $ kubectl get ing
-  $ Access the address in your browser
-  $ Available endpoints: /auth, /webapp, /recommend, /user-data
-  {{- else }}
-
-For only accessing the web application through the LoadBalancer service, try:
-  $ kubectl get svc/web
-  $ Access the address in your browser
-  {{- end }}
-{{- end}}
+{{- end }}

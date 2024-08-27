@@ -14,6 +14,14 @@ Conditional Logic Section
   {{- end }}
 {{- end }}
 
+{{- define "AWS-Deployment-Chart.hostname" -}}
+  {{- if .Values.deployment.localTesting }}
+    - host: "mylocaltestsite.local"
+  {{- else }}
+    - host: "*.${.Values.deployment.awsRegion}.elb.amazonaws.com"
+  {{- end }}
+{{- end }}
+
 {{/*
 Expand the name of the chart.
 */}}
