@@ -39,7 +39,7 @@ resource "aws_subnet" "private_subnet" {
   tags                                               = merge(var.tags, {
     Name                                             = "${var.vpc_name}-private-subnet-${count.index + 1}"
     "kubernetes.io/cluster/${var.kops_cluster_name}" = "owned"
-    kops.k8s.io/role                                 = "node"
+    "kops.k8s.io/role"                               = "node"
   })
 }
 
