@@ -1,3 +1,16 @@
+terraform {
+  required_providers {
+    kubernetes = {
+      source   = "hashicorp/kubernetes"
+      version  = "2.32.0"
+    }
+    helm       = {
+      source   = "hashicorp/helm"
+      version  = "2.15.0"
+    }
+  }
+}
+
 resource "kubernetes_namespace" "my_namespace" {
   metadata {
     name = var.namespace
@@ -25,6 +38,13 @@ resource "helm_release" "nginx_ingress" {
   depends_on = [ kubernetes_namespace.my_namespace ]
 }
 
+resource "null_resource" "sleep_for_ingress" {
+  provisioner "local-exec" {
+    command = "sleep 15"
+  }
+  depends_on = [kubernetes_namespace.my_namespace]
+}
+
 resource "helm_release" "helm_deployment" {
   name       = var.deployment_name
   chart      = var.helm_chart_path
@@ -45,7 +65,7 @@ resource "helm_release" "helm_deployment" {
     name     = "deployment.awsRegion"
     value    = "${var.aws_region}"
   }
-  depends_on = var.use_ingress_controller ? [helm_release.nginx_ingress] : [kubernetes_namespace.my_namespace]
+  depends_on = [null_resource.sleep_for_ingress]
 }
 
 resource "null_resource" "fetch_loadbalancer_url" {

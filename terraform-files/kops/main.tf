@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    aws        = {
+      source   = "hashicorp/aws"
+      version  = "5.64.0"
+    }
+  }
+}
+
 resource "aws_iam_role" "kops_role" {
   name                = "kops-role"
   assume_role_policy  = jsonencode({
@@ -52,16 +61,13 @@ resource "null_resource" "kops_cluster" {
 }
 
 data "aws_instance" "bastion" {
-  count       = var.enable_bastion ? 1 : 0
   filter {
     name      = "tag:Name"
-    values    = ["*bastion*"]
+    values    = ["${var.cluster_name}-bastion*"]
   }
   filter {
     name      = "instance-state-name"
     values    = ["running"]
   }
-  for_each    = toset(data.aws_instance.bastion.ids)
-  instance_id = each.value
   depends_on  = [ null_resource.kops_cluster ]
 }

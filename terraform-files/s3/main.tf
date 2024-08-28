@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    aws        = {
+      source   = "hashicorp/aws"
+      version  = "5.64.0"
+    }
+  }
+}
+
 resource "aws_s3_bucket" "kops_state_store" {
   bucket        = var.bucket_name
   force_destroy = true
