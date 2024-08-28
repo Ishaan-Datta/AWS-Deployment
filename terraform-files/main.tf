@@ -13,14 +13,14 @@ resource "random_string" "random" {
 }
 
 locals { 
-  azs                         = slice(data.aws_availability_zones.available.names, 0, var.az_count)
+  azs                         = slice(data.aws_availability_zones.available.names, 0, local.az_count)
   kops_cluster_name           = "kops-cluster-${random_string.random.result}.k8s.local"
   kops_state_store_name       = "${random_string.random.result}-kops-bucket"
   kops_state_store_id         = "s3://${random_string.random.result}-kops-bucket"
   public_subnet_cidr_blocks   = [for i in range(var.az_count) : cidrsubnet("10.0.0.0/16", 8, i)]
   private_subnet_cidr_blocks  = [for i in range(var.az_count) : cidrsubnet("10.0.0.0/16", 8, i + var.az_count)]
   helm_chart_path             = pathexpand("./helm-chart/AWS-Deployment")
-  az_count                    = length(local.azs)
+  az_count                    = min([var.az_count, length(data.aws_availability_zones.available.names)])
   tags                        = {
     terraform                 = true
     environment               = "${var.environment_name}"
@@ -36,7 +36,7 @@ module "network" {
   az_count                   = local.az_count
   public_subnet_cidr_blocks  = local.public_subnet_cidr_blocks
   private_subnet_cidr_blocks = local.private_subnet_cidr_blocks
-  azs                        = data.aws_availability_zones.available.names
+  azs                        = local.azs
   tags                       = local.tags
   vpc_name                   = var.vpc_name
   kops_cluster_name          = local.kops_cluster_name
@@ -62,9 +62,10 @@ module "kops" {
   vpc_id             = module.network.vpc_id
   private_subnet_ids = module.network.private_subnet_ids
   public_subnet_ids  = module.network.public_subnet_ids
-  ssh_key_path       = var.ssh_key_path
+  ssh_key_path       = pathexpand(var.ssh_key_path)
   availability_zones = data.aws_availability_zones.available.names
   enable_bastion     = var.enable_bastion
+  kubeconfig_path    = pathexpand(var.config_path)
   tags               = local.tags
   depends_on         = [ module.s3 ]
 }

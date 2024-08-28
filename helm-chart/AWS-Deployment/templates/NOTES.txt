@@ -1,29 +1,35 @@
 Thank you for installing {{ .Chart.Name }}, your release is named {{ .Release.Name }}.
 
 To learn more about the release, try:
-  $ helm status {{ .Release.Name }}
-  $ helm get all {{ .Release.Name }}
+
+helm status {{ .Release.Name }}
+helm get all {{ .Release.Name }}
 
 {{- if .Values.deployment.localTesting }}
   {{- if .Values.deployment.ingressEnabled }}
 
 For accessing all services through the Ingress controller, try:
-  $ kubectl get ing
-  $ minikube tunnel
-  $ curl --resolve "mylocaltestsite.local:80:127.0.0.1" -i http://mylocaltestsite.local/
-  $ Available endpoints: /auth, /webapp, /recommend, /user-data
+
+kubectl get ing
+minikube tunnel
+curl --resolve "mylocaltestsite.local:80:127.0.0.1" -i http://mylocaltestsite.local/
+
+Available endpoints: /auth, /webapp, /recommend, /user-data
   
 To uninstall: 
-  $ helm uninstall {{ .Release.Name }}
+
+helm uninstall {{ .Release.Name }}
   {{- else }}
 
 For only accessing the web application through the NodePort service, try: 
-  $ kubectl port-forward svc/frontend 80:80
-  $ curl http://localhost
-  $ minikube service web --url
-  $ Access the address in your browser
+
+kubectl port-forward svc/frontend 80:80
+curl http://localhost
+minikube service web --url
+Access the address in your browser
 
 To uninstall: 
-  $ helm uninstall {{ .Release.Name }}
+
+helm uninstall {{ .Release.Name }}
   {{- end }}
 {{- end }}

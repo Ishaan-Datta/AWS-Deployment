@@ -42,3 +42,8 @@ variable "enable_bastion" {
   description = "Whether to enable the bastion host"
   type        = bool
 }
+
+variable "kubeconfig_path" {
+  description = "The path to the kubeconfig file"
+  type        = string
+}

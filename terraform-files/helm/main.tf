@@ -45,19 +45,13 @@ resource "helm_release" "helm_deployment" {
     name     = "deployment.awsRegion"
     value    = "${var.aws_region}"
   }
-  depends_on = [ helm_release.nginx_ingress ]
-}
-
-resource "null_resource" "wait_for_lb" {
-  provisioner "local-exec" {
-    command  = "sleep 15"
-  }
-  depends_on = [helm_release.helm_deployment]
+  depends_on = var.use_ingress_controller ? [helm_release.nginx_ingress] : [kubernetes_namespace.my_namespace]
 }
 
 resource "null_resource" "fetch_loadbalancer_url" {
   provisioner "local-exec" {
     command = <<EOT
+      sleep 15
       if [ "${var.use_ingress_controller}" = "true" ]; then
         kubectl get services \
           --namespace ${var.namespace} \
@@ -71,5 +65,5 @@ resource "null_resource" "fetch_loadbalancer_url" {
       fi
     EOT
   }
-  depends_on = [module.kubernetes_service]
+  depends_on = [helm_release.helm_deployment]
 }

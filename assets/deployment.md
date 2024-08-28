@@ -67,9 +67,9 @@ cd terraform-files
 If using the S3 bucket for the Terraform state, run the following command:
 
 ```bash
-terraform init -backend-config="bucket=my-terraform-state-bucket" \
+terraform init -backend-config="bucket=(your bucket name)" \
                -backend-config="key=prod/terraform.tfstate" \
-               -backend-config="region=us-east-2"
+               -backend-config="region=(your AWS region)"
 ```
 
 Otherwise: 
@@ -121,6 +121,5 @@ deleted cluster: your-cluster-name
 2. Destroy the Terraform Infrastructure:
 
 ```bash
-terraform destroy
-	- yes
+terraform destroy -auto-approve
 ```

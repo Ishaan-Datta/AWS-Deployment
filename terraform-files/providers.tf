@@ -21,11 +21,11 @@ provider "aws" {
 }
 
 provider "kubernetes" {
-  config_path = var.config_path
+  config_path = pathexpand(var.config_path)
 }
 
 provider "helm" {
   kubernetes {
-    config_path = var.config_path
+    config_path = pathexpand(var.config_path)
   }
 }
