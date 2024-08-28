@@ -20,7 +20,7 @@ locals {
   public_subnet_cidr_blocks   = [for i in range(var.az_count) : cidrsubnet("10.0.0.0/16", 8, i)]
   private_subnet_cidr_blocks  = [for i in range(var.az_count) : cidrsubnet("10.0.0.0/16", 8, i + var.az_count)]
   helm_chart_path             = pathexpand("./helm-chart/AWS-Deployment")
-  az_count                    = min([var.az_count, length(data.aws_availability_zones.available.names)])
+  az_count                    = min(var.az_count, length(data.aws_availability_zones.available.names))
   tags                        = {
     terraform                 = true
     environment               = "${var.environment_name}"
