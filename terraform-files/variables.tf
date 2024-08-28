@@ -51,13 +51,13 @@ variable "vpc_name" {
 variable "ssh_key_path" {
   description = "The path to the SSH public key to be used for the bastion hosts"
   type        = string
-  default     = pathexpand("~/.ssh/id_rsa.pub")
+  default     = "~/.ssh/id_rsa.pub"
 }
 
 variable "config_path" {
   description = "The path to the kubeconfig file"
   type        = string
-  default     = pathexpand("~/.kube/config")
+  default     = "~/.kube/config"
 }
 
 variable "enable_bastion" {
