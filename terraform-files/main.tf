@@ -62,10 +62,10 @@ module "kops" {
   vpc_id             = module.network.vpc_id
   private_subnet_ids = module.network.private_subnet_ids
   public_subnet_ids  = module.network.public_subnet_ids
-  ssh_key_path       = pathexpand(var.ssh_key_path)
+  ssh_key_path       = var.ssh_key_path
   availability_zones = data.aws_availability_zones.available.names
   enable_bastion     = var.enable_bastion
-  kubeconfig_path    = pathexpand(var.config_path)
+  kubeconfig_path    = var.config_path
   tags               = local.tags
   depends_on         = [ module.s3 ]
 }

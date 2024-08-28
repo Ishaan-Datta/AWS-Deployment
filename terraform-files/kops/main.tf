@@ -36,10 +36,10 @@ resource "null_resource" "kops_cluster" {
         --node-count=1 \
         --node-size=t3.small \ 
         --master-size=t3.medium"
-        --kubeconfig=${var.kubeconfig_path}
+        --kubeconfig=${pathexpand(var.kubeconfig_path)}
 
       if [ "${var.enable_bastion}" = "true" ]; then
-        KOPS_CMD="$KOPS_CMD --bastion --ssh-public-key=${var.ssh_key_path}"
+        KOPS_CMD="$KOPS_CMD --bastion --ssh-public-key=${pathexpand(var.ssh_key_path)}"
       fi
 
       eval $KOPS_CMD
