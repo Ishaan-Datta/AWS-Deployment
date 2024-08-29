@@ -40,7 +40,7 @@ resource "helm_release" "nginx_ingress" {
 
 resource "null_resource" "sleep_for_ingress" {
   provisioner "local-exec" {
-    command = "sleep 15"
+    command  = "sleep 30"
   }
   depends_on = [kubernetes_namespace.my_namespace]
 }
@@ -68,22 +68,18 @@ resource "helm_release" "helm_deployment" {
   depends_on = [null_resource.sleep_for_ingress]
 }
 
-resource "null_resource" "fetch_loadbalancer_url" {
-  provisioner "local-exec" {
-    command = <<EOT
-      sleep 15
-      if [ "${var.use_ingress_controller}" = "true" ]; then
-        kubectl get services \
-          --namespace ${var.namespace} \
-          ingress-nginx-controller \
-          --output jsonpath='{.status.loadBalancer.ingress[0].hostname}' > service_ip.txt
-      else
-        kubectl get services \
-          --namespace ${var.namespace} \
-          web \
-          --output jsonpath='{.status.loadBalancer.ingress[0].hostname}' > service_ip.txt
-      fi
-    EOT
+data "kubernetes_service" "ingress-nginx" {
+  count       = var.use_ingress_controller ? 1 : 0
+  metadata {
+    name      = "ingress-nginx-controller"
+    namespace = helm_release.nginx_ingress[0].metadata[0].namespace
   }
-  depends_on = [helm_release.helm_deployment]
+}
+
+data "kubernetes_service" "web" {
+  count       = var.use_ingress_controller ? 0 : 1
+  metadata {
+    name      = var.deployment_name
+    namespace = helm_release.helm_deployment.metadata[0].namespace
+  }
 }

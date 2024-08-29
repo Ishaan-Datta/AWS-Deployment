@@ -44,7 +44,7 @@ resource "null_resource" "kops_cluster" {
         --topology=private \
         --node-count=1 \
         --node-size=t3.small \ 
-        --master-size=t3.medium"
+        --master-size=t3.medium" \
         --kubeconfig=${pathexpand(var.kubeconfig_path)}
 
       if [ "${var.enable_bastion}" = "true" ]; then

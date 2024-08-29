@@ -45,10 +45,10 @@ To access the Helm resources, you can use the following commands:
 "helm get all ${var.deployment_name} --namespace ${var.namespace}"
 
 %{if var.use_ingress_controller ~}
-"For accessing all services through the Ingress controller, visit the following address: ${module.helm.elb_url}"
+"For accessing all services through the Ingress controller, visit the following address: ${module.helm.ingress_elb_url}"
 The available endpoints are: /auth, /webapp, /recommend, /user-data
 %{else ~}
-"For only accessing the webapp through the Loadbalancer Service, visit the following address: ${module.helm.elb_url}"
+"For only accessing the webapp through the Loadbalancer Service, visit the following address: ${module.helm.web_elb_url}"
 %{endif ~}
 
 To uninstall the resources, you can use the following commands:
